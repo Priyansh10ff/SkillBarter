@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }) => {
           const config = {
             headers: { Authorization: `Bearer ${token}` },
           };
-          const { data } = await axios.get("http://localhost:5000/api/users/me", config);
+          const { data } = await axios.get("https://skillbarter-hl6x.onrender.com//api/users/me", config);
           setUser(data);
         } catch (error) {
           localStorage.removeItem("token");
@@ -29,14 +29,14 @@ export const AuthProvider = ({ children }) => {
 
   // Login Function
   const login = async (email, password) => {
-    const { data } = await axios.post("http://localhost:5000/api/users/login", { email, password });
+    const { data } = await axios.post("https://skillbarter-hl6x.onrender.com//api/users/login", { email, password });
     localStorage.setItem("token", data.token);
     setUser(data); // This data includes name, email, and timeCredits
   };
 
   // Register Function
   const register = async (name, email, password, skills) => {
-    const { data } = await axios.post("http://localhost:5000/api/users", { name, email, password, skills });
+    const { data } = await axios.post("https://skillbarter-hl6x.onrender.com//api/users", { name, email, password, skills });
     localStorage.setItem("token", data.token);
     setUser(data);
   };
@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem("token");
     if (token) {
         const config = { headers: { Authorization: `Bearer ${token}` } };
-        const { data } = await axios.get("http://localhost:5000/api/users/me", config);
+        const { data } = await axios.get("https://skillbarter-hl6x.onrender.com//api/users/me", config);
         setUser(data);
     }
   };

@@ -10,7 +10,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      socket.current = io("http://localhost:5000");
+      socket.current = io("https://skillbarter-hl6x.onrender.com/");
       socket.current.emit("join_user", user._id);
     }
   }, [user]);
