@@ -17,7 +17,8 @@ export const AuthProvider = ({ children }) => {
           const config = {
             headers: { Authorization: `Bearer ${token}` },
           };
-          const { data } = await axios.get("http://localhost:5000/api/users/me", config);
+          // FIX 1: Removed http://localhost:5000 (handled by App.jsx)
+          const { data } = await axios.get("/api/users/me", config);
           setUser(data);
         } catch (error) {
           console.error(error);
@@ -31,14 +32,16 @@ export const AuthProvider = ({ children }) => {
 
   // Login Function
   const login = async (email, password) => {
-    const { data } = await axios.post("http://localhost:5000/api/users/login", { email, password });
+    // FIX 2: Removed http://localhost:5000
+    const { data } = await axios.post("/api/users/login", { email, password });
     localStorage.setItem("token", data.token);
-    setUser(data); // This data includes name, email, and timeCredits
+    setUser(data); 
   };
 
   // Register Function
   const register = async (name, email, password, skills) => {
-    const { data } = await axios.post("http://localhost:5000/api/users", { name, email, password, skills });
+    // FIX 3: Removed http://localhost:5000
+    const { data } = await axios.post("/api/users", { name, email, password, skills });
     localStorage.setItem("token", data.token);
     setUser(data);
   };
@@ -54,7 +57,8 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem("token");
     if (token) {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const { data } = await axios.get("http://localhost:5000/api/users/me", config);
+      // FIX 4: Removed http://localhost:5000
+      const { data } = await axios.get("/api/users/me", config);
       setUser(data);
     }
   };

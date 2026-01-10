@@ -11,21 +11,35 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
-// Setup Socket.io with CORS
+// Get Client URL from Env Variables (Set this in Render!)
+// Fallback to localhost array for local development
+const allowedOrigins = [
+  process.env.CLIENT_URL,       // The Vercel URL
+  "http://localhost:5173",      // Vite Local Dev
+  "http://localhost:5000"       // Postman/Backend testing
+].filter(Boolean); // Remove undefined values if env var is missing
+
+// 1. Setup Socket.io with Dynamic CORS
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // Your Client URL
-    methods: ["GET", "POST"]
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
-app.use(cors());
+// 2. Setup Express CORS (Matches Socket.io)
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
 
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/listings', require('./routes/listingRoutes'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
-
 
 // Socket Logic
 io.on('connection', (socket) => {
