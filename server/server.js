@@ -36,6 +36,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.get('/', (req, res) => {
+  res.send('SkillBarter Backend is Running!');
+});
 
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/listings', require('./routes/listingRoutes'));
