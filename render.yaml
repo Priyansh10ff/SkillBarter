@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: skill-barter-server
+    env: node
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: CLIENT_URL
+        fromService:
+          type: web
+          name: skill-barter-client
+          property: url

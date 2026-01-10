@@ -9,6 +9,7 @@ import Home from "./components/Home";
 import Transactions from "./components/Transactions";
 import VideoRoom from "./components/VideoRoom";
 import Profile from "./components/Profile";
+import Leaderboard from "./components/Leaderboard";
 
 
 const App = () => {
@@ -26,6 +27,7 @@ const App = () => {
               <Route path="/my-transactions" element={<Transactions />} />
               <Route path="/room/:id" element={<VideoRoom />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
             </Routes>
           </div>
         </Router>

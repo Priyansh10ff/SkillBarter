@@ -2,13 +2,18 @@ import { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import AuthContext from "../context/AuthContext";
 import moment from "moment";
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { Trash2, Calendar, Zap, Layers, Award, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 
 const Profile = () => {
-  const { user } = useContext(AuthContext);
+  const { user, refreshUser } = useContext(AuthContext); 
   const [myListings, setMyListings] = useState([]);
+  const [preferredHours, setPreferredHours] = useState("");
+  const [isEditingHours, setIsEditingHours] = useState(false);
+  
+
+
 
   useEffect(() => {
     const fetchMyListings = async () => {
@@ -19,17 +24,37 @@ const Profile = () => {
         setMyListings(data);
       } catch (error) {
         console.error(error);
-      }
+        toast.error("Failed to load listings");
+      } 
     };
     fetchMyListings();
   }, []);
+
+  const handleUpdateProfile = async () => {
+    if (preferredHours.length > 50) return toast.error("Preference too long (max 50 chars)");
+
+    try {
+        const token = localStorage.getItem("token");
+        await axios.put("http://localhost:5000/api/users/profile", { preferredHours }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        toast.success("Profile updated!");
+        setIsEditingHours(false);
+        refreshUser(); 
+    } catch (error) {
+        console.error(error);
+        toast.error("Update failed");
+    }
+  };
+
+  if (!user) return <div className="min-h-screen flex items-center justify-center bg-[#020617] text-white">Loading Profile...</div>;
 
   const handleDelete = async (id) => {
     toast((t) => (
       <div className="flex flex-col gap-2">
         <span className="font-bold">Delete this listing?</span>
         <div className="flex gap-2">
-          <button 
+          <button
             onClick={() => {
               performDelete(id);
               toast.dismiss(t.id);
@@ -51,6 +76,7 @@ const Profile = () => {
       setMyListings(myListings.filter(l => l._id !== id));
       toast.success("Listing deleted successfully!");
     } catch (error) {
+      console.error(error);
       toast.error("Failed to delete.");
     }
   };
@@ -68,15 +94,15 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-[#020617] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] pt-28 pb-20 px-6">
       <div className="container mx-auto max-w-5xl">
-        
+
         {/* HERO PROFILE CARD */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative bg-[#0f172a]/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-12 overflow-hidden border border-white/5 shadow-2xl"
+          className="relative bg-[#0f172a]/80 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-12 overflow-hidden border border-white/5 shadow-2xl"
         >
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] -mr-20 -mt-20"></div>
-          
+
           <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 md:gap-12">
             <div className="relative group">
               <div className="w-32 h-32 bg-gray-900 rounded-full flex items-center justify-center text-5xl font-black text-white border-4 border-white/10 shadow-xl">
@@ -90,7 +116,7 @@ const Profile = () => {
               </div>
               <h1 className="text-4xl md:text-5xl font-black text-white mb-2">{user?.name}</h1>
               <p className="text-slate-400 text-lg mb-6">{user?.email}</p>
-              
+
               <div className="flex flex-wrap justify-center md:justify-start gap-4">
                 <div className="flex items-center gap-2 bg-indigo-500/10 px-4 py-2 rounded-xl border border-indigo-500/20">
                   <Zap size={18} className="text-yellow-400 fill-yellow-400" />
@@ -105,14 +131,79 @@ const Profile = () => {
           </div>
         </motion.div>
 
+        {/* STATS & BADGES GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            {/* STATS */}
+            <motion.div variants={itemVariants} className="bg-[#0f172a]/60 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-white/5">
+                <h3 className="text-2xl font-black text-white mb-6 flex items-center gap-2">
+                    <Award className="text-yellow-500" /> Statistics
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/5 p-4 rounded-2xl">
+                        <div className="text-slate-400 text-xs font-bold uppercase mb-1">Classes Attended</div>
+                        <div className="text-3xl font-black text-white">{user?.stats?.classesAttended || 0}</div>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-2xl">
+                        <div className="text-slate-400 text-xs font-bold uppercase mb-1">Classes Taught</div>
+                        <div className="text-3xl font-black text-white">{user?.stats?.classesTaught || 0}</div>
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* PREFERENCES */}
+            <motion.div variants={itemVariants} className="bg-[#0f172a]/60 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-white/5">
+                <h3 className="text-2xl font-black text-white mb-6 flex items-center gap-2">
+                    <Clock className="text-indigo-500" /> Availability
+                </h3>
+                <div className="space-y-4">
+                    <div className="text-slate-400 text-sm">Set your preferred teaching/learning hours to help others schedule with you.</div>
+                    {isEditingHours ? (
+                        <div className="flex gap-2">
+                            <input 
+                                type="text" 
+                                value={preferredHours} 
+                                onChange={(e) => setPreferredHours(e.target.value)} 
+                                className="flex-1 bg-slate-800 text-white p-3 rounded-xl border border-white/10 focus:border-indigo-500 outline-none"
+                                placeholder="e.g. Weekdays 6PM - 9PM"
+                            />
+                            <button onClick={handleUpdateProfile} className="bg-green-600 text-white px-4 rounded-xl font-bold">Save</button>
+                        </div>
+                    ) : (
+                        <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
+                            <span className="text-white font-mono">{user?.preferredHours || "No preference set"}</span>
+                            <button onClick={() => setIsEditingHours(true)} className="text-indigo-400 text-sm font-bold hover:text-white">Edit</button>
+                        </div>
+                    )}
+                </div>
+            </motion.div>
+        </div>
+
+        {/* BADGES */}
+        {user?.badges?.length > 0 && (
+            <motion.div variants={itemVariants} className="mb-12">
+                <h3 className="text-2xl font-black text-white mb-6">Earned Badges</h3>
+                <div className="flex gap-4 flex-wrap">
+                    {user.badges.map((badge, idx) => (
+                        <div key={idx} className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 p-4 rounded-2xl border border-yellow-500/30 flex items-center gap-3">
+                            <span className="text-2xl">{badge.icon}</span>
+                            <div>
+                                <div className="text-white font-bold">{badge.name}</div>
+                                <div className="text-yellow-200/50 text-xs">{moment(badge.dateEarned).format("MMM YYYY")}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </motion.div>
+        )}
+
         {/* LISTINGS MANAGEMENT */}
         <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-2 mt-12">
-             <Layers className="text-indigo-500" /> Manage Inventory
+          <Layers className="text-indigo-500" /> Manage Inventory
         </h2>
-        
+
         <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid md:grid-cols-2 gap-6">
           {myListings.length > 0 ? myListings.map((listing) => (
-            <motion.div 
+            <motion.div
               key={listing._id}
               variants={itemVariants}
               whileHover={{ y: -5 }}
@@ -122,7 +213,7 @@ const Profile = () => {
                 <span className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-lg text-xs font-black uppercase">
                   {listing.category}
                 </span>
-                <button 
+                <button
                   onClick={() => handleDelete(listing._id)}
                   className="w-10 h-10 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition"
                 >
@@ -138,7 +229,7 @@ const Profile = () => {
             </motion.div>
           )) : (
             <div className="col-span-full py-20 text-center text-slate-500">
-               <p>No listings found.</p>
+              <p>No listings found.</p>
             </div>
           )}
         </motion.div>

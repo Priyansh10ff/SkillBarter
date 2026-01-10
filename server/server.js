@@ -4,6 +4,9 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const http = require('http');
 const { Server } = require('socket.io');
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
 
 dotenv.config();
 connectDB();
@@ -11,16 +14,32 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
+// Security & Performance Middleware
+app.use(helmet());
+app.use(compression());
+app.use(morgan('dev'));
+
+// CORS Configuration
+const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+app.use(cors({
+  origin: clientUrl,
+  credentials: true
+}));
+
 // Setup Socket.io with CORS
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // Your Client URL
+    origin: clientUrl,
     methods: ["GET", "POST"]
   }
 });
 
-app.use(cors());
 app.use(express.json());
+
+// Health Check Endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date() });
+});
 
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/listings', require('./routes/listingRoutes'));

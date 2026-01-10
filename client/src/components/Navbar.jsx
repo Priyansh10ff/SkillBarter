@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { LayoutGrid, Plus, LogOut, User, Zap } from "lucide-react";
 
 const Navbar = () => {
@@ -15,7 +15,7 @@ const Navbar = () => {
   };
 
   return (
-    <motion.nav 
+    <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       className="fixed top-0 left-0 right-0 z-50 bg-[#0f172a]/80 backdrop-blur-md border-b border-white/10"
@@ -39,10 +39,13 @@ const Navbar = () => {
               <Link to="/my-transactions" className={`nav-link ${location.pathname === '/my-transactions' ? 'active' : ''}`}>
                 Activity
               </Link>
+              <Link to="/leaderboard" className={`nav-link ${location.pathname === '/leaderboard' ? 'active' : ''}`}>
+                Leaderboard
+              </Link>
               <Link to="/profile" className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
                 Profile
               </Link>
-              
+
               <div className="h-6 w-px bg-white/10 mx-3"></div>
 
               <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full mr-3">

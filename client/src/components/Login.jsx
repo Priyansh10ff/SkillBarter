@@ -1,7 +1,7 @@
 import { useState, useContext } from "react";
 import AuthContext from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { Mail, Lock, LogIn } from "lucide-react";
 
 const Login = () => {
@@ -32,9 +32,9 @@ const Login = () => {
 
       {/* Right Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-[#0f172a]">
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }} 
-          animate={{ opacity: 1, x: 0 }} 
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
           className="w-full max-w-md"
         >
           <div className="mb-8">

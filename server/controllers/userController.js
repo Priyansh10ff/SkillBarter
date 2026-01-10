@@ -81,8 +81,59 @@ const getMe = async (req, res) => {
   res.status(200).json(req.user);
 };
 
+// @desc    Get Leaderboard
+// @route   GET /api/users/leaderboard
+// @access  Public
+const getLeaderboard = async (req, res) => {
+  try {
+    // Sort by classesTaught (descending)
+    const topTeachers = await User.find({})
+      .sort({ 'stats.classesTaught': -1 })
+      .limit(10)
+      .select('name stats badges');
+    res.status(200).json(topTeachers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Update user profile
+// @route   PUT /api/users/profile
+// @access  Private
+const updateProfile = async (req, res) => {
+  const user = await User.findById(req.user.id);
+
+  if (user) {
+    user.name = req.body.name || user.name;
+    user.email = req.body.email || user.email;
+    user.preferredHours = req.body.preferredHours || user.preferredHours;
+    
+    if (req.body.password) {
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(req.body.password, salt);
+    }
+
+    const updatedUser = await user.save();
+
+    res.json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      timeCredits: updatedUser.timeCredits,
+      preferredHours: updatedUser.preferredHours,
+      stats: updatedUser.stats,
+      badges: updatedUser.badges,
+      token: generateToken(updatedUser._id),
+    });
+  } else {
+    res.status(404).json({ message: 'User not found' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getMe,
+  getLeaderboard,
+  updateProfile,
 };

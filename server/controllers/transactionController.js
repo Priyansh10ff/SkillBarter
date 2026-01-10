@@ -59,7 +59,25 @@ const completeTransaction = async (req, res) => {
 
     const teacher = await User.findById(transaction.receiver);
     teacher.timeCredits += 1;
+    
+    // Update Stats
+    teacher.stats = teacher.stats || {};
+    teacher.stats.classesTaught = (teacher.stats.classesTaught || 0) + 1;
+
+    const student = await User.findById(transaction.sender);
+    student.stats = student.stats || {};
+    student.stats.classesAttended = (student.stats.classesAttended || 0) + 1;
+
+    // Badge Logic (Simple Example)
+    if (teacher.stats.classesTaught === 5) {
+      teacher.badges.push({ name: "Teacher Rookie", icon: "🎓" });
+    }
+    if (student.stats.classesAttended === 5) {
+      student.badges.push({ name: "Dedicated Student", icon: "📚" });
+    }
+
     await teacher.save();
+    await student.save();
 
     res.status(200).json(transaction);
   } catch (error) {
