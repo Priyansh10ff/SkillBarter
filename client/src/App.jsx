@@ -14,7 +14,7 @@ import axios from "axios"; // 1. Import Axios
 
 // 2. Set the Global Base URL for API calls
 // This tells axios to use your Render URL in production, but localhost on your PC
-axios.defaults.baseURL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || "https://skillbarter-yew1.onrender.com";
 axios.defaults.withCredentials = true; // Important if you use cookies/sessions
 
 const App = () => {

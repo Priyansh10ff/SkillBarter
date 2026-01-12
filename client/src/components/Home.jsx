@@ -14,7 +14,7 @@ const Home = () => {
   useEffect(() => {
     const fetchListings = async () => {
       try {
-        const { data } = await axios.get("http://localhost:5000/api/listings");
+        const { data } = await axios.get("/api/listings");
         setListings(data);
       } catch (error) { console.error(error); }
     };
@@ -34,7 +34,7 @@ const Home = () => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:5000/api/transactions/book", { listingId: id }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post("/api/transactions/book", { listingId: id }, { headers: { Authorization: `Bearer ${token}` } });
       alert("Booking Confirmed!");
       refreshUser();
     } catch (err) { 

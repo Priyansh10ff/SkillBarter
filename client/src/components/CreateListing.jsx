@@ -10,7 +10,7 @@ const CreateListing = () => {
   const submit = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem("token");
-    await axios.post("http://localhost:5000/api/listings", form, { headers: { Authorization: `Bearer ${token}` } });
+    await axios.post("/api/listings", form, { headers: { Authorization: `Bearer ${token}` } });
     navigate("/");
   };
 

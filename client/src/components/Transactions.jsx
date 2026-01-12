@@ -17,7 +17,7 @@ const Transactions = () => {
   const fetchTransactions = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
-      const { data } = await axios.get("http://localhost:5000/api/transactions/my", { headers: { Authorization: `Bearer ${token}` } });
+      const { data } = await axios.get("/api/transactions/my", { headers: { Authorization: `Bearer ${token}` } });
       setTransactions(data);
     } catch (error) { console.error(error); }
   }, []);
@@ -28,7 +28,7 @@ const Transactions = () => {
   const handleComplete = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`http://localhost:5000/api/transactions/${id}/complete`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(`/api/transactions/${id}/complete`, {}, { headers: { Authorization: `Bearer ${token}` } });
       toast.success("Funds Released!");
       fetchTransactions();
       refreshUser();
@@ -49,7 +49,7 @@ const Transactions = () => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`http://localhost:5000/api/transactions/${id}/schedule`,
+      await axios.put(`/api/transactions/${id}/schedule`,
         { date: scheduleDate, action, reason },
         { headers: { Authorization: `Bearer ${token}` } }
       );

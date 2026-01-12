@@ -14,7 +14,8 @@ export const SocketProvider = ({ children }) => {
   const { user } = useContext(AuthContext); 
 
   // Define the server URL: Use the Env Variable if available, otherwise localhost
-  const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
+  // Use the live URL as the default fallback so it works immediately on deployment
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'https://skillbarter-yew1.onrender.com';
 
   useEffect(() => {
     // Only connect if user is authenticated
