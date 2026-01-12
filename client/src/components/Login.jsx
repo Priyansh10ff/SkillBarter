@@ -15,7 +15,10 @@ const Login = () => {
     try {
       await login(email, password);
       navigate("/");
-    } catch { alert("Failed."); }
+    } catch (error) {
+      console.error("Login Error:", error);
+      alert(error.response?.data?.message || error.message || "Login Failed");
+    }
   };
 
   return (

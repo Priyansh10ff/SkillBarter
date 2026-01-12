@@ -14,7 +14,10 @@ const Register = () => {
     try {
       await register(formData.name, formData.email, formData.password, formData.skills.split(','));
       navigate("/");
-    } catch { alert("Failed."); }
+    } catch (error) {
+      console.error("Registration Error:", error);
+      alert(error.response?.data?.message || error.message || "Registration Failed");
+    }
   };
 
   return (
