@@ -7,26 +7,47 @@ const Listing = require('../models/Listing');
 
 const createTransaction = async (req, res) => {
   const { listingId } = req.body;
+  
   try {
     const listing = await Listing.findById(listingId).populate('teacher');
     if (!listing) return res.status(404).json({ message: 'Listing not found' });
 
-    const student = await User.findById(req.user.id);
-    if (student.timeCredits < 1) return res.status(400).json({ message: 'Not enough credits' });
+    // Prevent self-booking
+    if (listing.teacher._id.toString() === req.user.id) {
+      return res.status(400).json({ message: 'Cannot book your own listing' });
+    }
 
-    // Deduct credit
-    student.timeCredits -= 1;
-    await student.save();
+    // Atomic credit check and deduction (Works on Standalone & Replica Sets)
+    const student = await User.findOneAndUpdate(
+      { _id: req.user.id, timeCredits: { $gte: 1 } },
+      { $inc: { timeCredits: -1 } },
+      { new: true }
+    );
 
-    const transaction = await Transaction.create({
-      sender: req.user.id,
-      receiver: listing.teacher._id,
-      listing: listingId,
-    });
+    if (!student) {
+      return res.status(400).json({ message: 'Insufficient credits' });
+    }
 
-    res.status(201).json(transaction);
+    try {
+      // Create transaction
+      const transaction = await Transaction.create({
+        sender: req.user.id,
+        receiver: listing.teacher._id,
+        listing: listingId,
+        status: 'PENDING'
+      });
+
+      res.status(201).json(transaction);
+    } catch (txError) {
+      // ROLLBACK: Refund credit if transaction creation fails
+      console.error("Transaction creation failed, refunding credit...", txError);
+      await User.findByIdAndUpdate(req.user.id, { $inc: { timeCredits: 1 } });
+      return res.status(500).json({ message: 'Transaction failed, credit refunded', error: txError.message });
+    }
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Booking Error:", error);
+    res.status(500).json({ message: 'Booking failed', error: error.message });
   }
 };
 
@@ -54,38 +75,60 @@ const completeTransaction = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized' });
     }
 
-    transaction.status = 'COMPLETED';
-    await transaction.save();
+    if (transaction.status === 'COMPLETED') {
+      return res.status(400).json({ message: 'Transaction already completed' });
+    }
 
-    const teacher = await User.findById(transaction.receiver);
-    teacher.timeCredits += 1;
-    
-    // Update Stats
-    teacher.stats = teacher.stats || {};
-    teacher.stats.classesTaught = (teacher.stats.classesTaught || 0) + 1;
+    // Atomic Update for Transaction Status
+    // Prevents double-completion race conditions
+    const updatedTransaction = await Transaction.findOneAndUpdate(
+      { _id: req.params.id, status: 'PENDING' },
+      { status: 'COMPLETED' },
+      { new: true }
+    );
 
-    const student = await User.findById(transaction.sender);
-    student.stats = student.stats || {};
-    student.stats.classesAttended = (student.stats.classesAttended || 0) + 1;
+    if (!updatedTransaction) {
+      return res.status(400).json({ message: 'Transaction could not be completed (might be already completed)' });
+    }
 
-    // Badge Logic (Simple Example)
-    if (teacher.stats.classesTaught === 5) {
+    // Atomic Update for Teacher (Credits + Stats)
+    const teacher = await User.findByIdAndUpdate(
+      transaction.receiver,
+      { 
+        $inc: { 
+          timeCredits: 1,
+          "stats.classesTaught": 1 
+        } 
+      },
+      { new: true }
+    );
+
+    // Atomic Update for Student (Stats only)
+    const student = await User.findByIdAndUpdate(
+      transaction.sender,
+      { $inc: { "stats.classesAttended": 1 } },
+      { new: true }
+    );
+
+    // Badge Logic (Ideally should be a separate service or function, kept simple here)
+    // We check if badge needs to be pushed to avoid duplicates
+    if (teacher.stats.classesTaught === 5 && !teacher.badges.some(b => b.name === "Teacher Rookie")) {
       teacher.badges.push({ name: "Teacher Rookie", icon: "🎓" });
+      await teacher.save();
     }
-    if (student.stats.classesAttended === 5) {
+    if (student.stats.classesAttended === 5 && !student.badges.some(b => b.name === "Dedicated Student")) {
       student.badges.push({ name: "Dedicated Student", icon: "📚" });
+      await student.save();
     }
-
-    await teacher.save();
-    await student.save();
 
     const io = req.app.get("io");
     if (io) {
       io.to(teacher._id.toString()).emit("credit_update", teacher.timeCredits);
     }
 
-    res.status(200).json(transaction);
+    res.status(200).json(updatedTransaction);
   } catch (error) {
+    console.error("Completion Error:", error);
     res.status(500).json({ message: error.message });
   }
 };

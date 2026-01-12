@@ -40,7 +40,7 @@ export const SocketProvider = ({ children }) => {
     } else {
       setSocket(null);
     }
-  }, [user?._id, SERVER_URL, refreshUser, addNotification]);
+  }, [user, SERVER_URL, refreshUser, addNotification]);
 
   return (
     <SocketContext.Provider value={{ socket }}>
