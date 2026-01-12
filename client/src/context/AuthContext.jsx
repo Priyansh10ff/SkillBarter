@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useCallback } from "react";
 import axios from "axios";
 
 export const AuthContext = createContext();
@@ -31,37 +31,53 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Login Function
-  const login = async (email, password) => {
-    // FIX 2: Removed http://localhost:5000
-    const { data } = await axios.post("/api/users/login", { email, password });
-    localStorage.setItem("token", data.token);
-    setUser(data); 
-  };
+  const login = useCallback(async (email, password) => {
+    try {
+      // FIX 2: Removed http://localhost:5000
+      const { data } = await axios.post("/api/users/login", { email, password });
+      localStorage.setItem("token", data.token);
+      setUser(data);
+      return { success: true, data };
+    } catch (error) {
+      console.error("Login failed:", error);
+      throw error;
+    }
+  }, []);
 
   // Register Function
-  const register = async (name, email, password, skills) => {
-    // FIX 3: Removed http://localhost:5000
-    const { data } = await axios.post("/api/users", { name, email, password, skills });
-    localStorage.setItem("token", data.token);
-    setUser(data);
-  };
+  const register = useCallback(async (name, email, password, skills) => {
+    try {
+      // FIX 3: Removed http://localhost:5000
+      const { data } = await axios.post("/api/users", { name, email, password, skills });
+      localStorage.setItem("token", data.token);
+      setUser(data);
+      return { success: true, data };
+    } catch (error) {
+      console.error("Registration failed:", error);
+      throw error;
+    }
+  }, []);
 
   // Logout Function
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("token");
     setUser(null);
-  };
+  }, []);
 
   // Refresh User Data (To update Wallet Balance after a transaction)
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (token) {
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      // FIX 4: Removed http://localhost:5000
-      const { data } = await axios.get("/api/users/me", config);
-      setUser(data);
+      try {
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        // FIX 4: Removed http://localhost:5000
+        const { data } = await axios.get("/api/users/me", config);
+        setUser(data);
+      } catch (error) {
+        console.error("Failed to refresh user:", error);
+      }
     }
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, login, register, logout, loading, refreshUser }}>

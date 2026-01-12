@@ -44,8 +44,16 @@ const io = new Server(server, {
   },
 });
 
+app.set("io", io);
+
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
+
+  const userId = socket.handshake.query.userId;
+  if (userId) {
+    socket.join(userId);
+    console.log(`User ${userId} joined their room`);
+  }
 
   socket.on("join_room", (roomId) => {
     socket.join(roomId);

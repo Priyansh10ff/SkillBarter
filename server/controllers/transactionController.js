@@ -79,6 +79,11 @@ const completeTransaction = async (req, res) => {
     await teacher.save();
     await student.save();
 
+    const io = req.app.get("io");
+    if (io) {
+      io.to(teacher._id.toString()).emit("credit_update", teacher.timeCredits);
+    }
+
     res.status(200).json(transaction);
   } catch (error) {
     res.status(500).json({ message: error.message });
