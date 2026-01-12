@@ -9,7 +9,7 @@ const {
 const { protect } = require('../middleware/authMiddleware');
 
 // All transaction routes should be protected
-router.post('/', protect, createTransaction);
+router.post('/book', protect, createTransaction);
 router.get('/my', protect, getMyTransactions);
 router.put('/:id/complete', protect, completeTransaction);
 router.put('/:id/schedule', protect, updateSchedule);
