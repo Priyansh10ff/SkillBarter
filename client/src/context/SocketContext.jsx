@@ -2,7 +2,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
-import toast from "react-hot-toast";
+import { useNotification } from './NotificationContext';
 
 const SocketContext = createContext();
 
@@ -13,6 +13,7 @@ export const useSocket = () => {
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const { user, refreshUser } = useContext(AuthContext); 
+  const { addNotification } = useNotification();
 
   // Define the server URL: Use the Env Variable if available, otherwise localhost
   // Use the live URL as the default fallback so it works immediately on deployment
@@ -30,14 +31,7 @@ export const SocketProvider = ({ children }) => {
 
       newSocket.on("credit_update", (newCredits) => {
         refreshUser();
-        toast.success(`Credits updated! Balance: ${newCredits} CR`, {
-          icon: '💰',
-          style: {
-            borderRadius: '10px',
-            background: '#333',
-            color: '#fff',
-          },
-        });
+        addNotification(`Credits updated! Balance: ${newCredits} CR`, 'success');
       });
 
       setSocket(newSocket);
@@ -46,7 +40,7 @@ export const SocketProvider = ({ children }) => {
     } else {
       setSocket(null);
     }
-  }, [user?._id, SERVER_URL, refreshUser]);
+  }, [user?._id, SERVER_URL, refreshUser, addNotification]);
 
   return (
     <SocketContext.Provider value={{ socket }}>

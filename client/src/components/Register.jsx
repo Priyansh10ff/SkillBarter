@@ -1,5 +1,6 @@
 import { useState, useContext } from "react";
 import AuthContext from "../context/AuthContext";
+import { useNotification } from "../context/NotificationContext";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { User, Mail, Lock, Zap, ArrowRight } from "lucide-react";
@@ -7,16 +8,19 @@ import { User, Mail, Lock, Zap, ArrowRight } from "lucide-react";
 const Register = () => {
   const [formData, setFormData] = useState({ name: "", email: "", password: "", skills: "" });
   const { register } = useContext(AuthContext);
+  const { addNotification } = useNotification();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await register(formData.name, formData.email, formData.password, formData.skills.split(','));
+      const skillsArray = formData.skills ? formData.skills.split(',').map(s => s.trim()).filter(s => s) : [];
+      await register(formData.name, formData.email, formData.password, skillsArray);
+      addNotification("Registration successful! 2 Free Credits added.", "success");
       navigate("/");
     } catch (error) {
       console.error("Registration Error:", error);
-      alert(error.response?.data?.message || error.message || "Registration Failed");
+      addNotification(error.response?.data?.message || error.message || "Registration Failed", "error");
     }
   };
 

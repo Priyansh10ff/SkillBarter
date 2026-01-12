@@ -1,5 +1,6 @@
 import { useState, useContext } from "react";
 import AuthContext from "../context/AuthContext";
+import { useNotification } from "../context/NotificationContext";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { Mail, Lock, LogIn } from "lucide-react";
@@ -8,16 +9,18 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { login } = useContext(AuthContext);
+  const { addNotification } = useNotification();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await login(email, password);
+      addNotification("Welcome back!", "success");
       navigate("/");
     } catch (error) {
       console.error("Login Error:", error);
-      alert(error.response?.data?.message || error.message || "Login Failed");
+      addNotification(error.response?.data?.message || error.message || "Login Failed", "error");
     }
   };
 

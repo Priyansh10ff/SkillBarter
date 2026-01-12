@@ -1,17 +1,25 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useNotification } from "../context/NotificationContext";
 import { PenTool } from "lucide-react";
 
 const CreateListing = () => {
   const [form, setForm] = useState({ title: "", description: "", category: "Coding", duration: 60 });
   const navigate = useNavigate();
+  const { addNotification } = useNotification();
 
   const submit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem("token");
-    await axios.post("/api/listings", form, { headers: { Authorization: `Bearer ${token}` } });
-    navigate("/");
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post("/api/listings", form, { headers: { Authorization: `Bearer ${token}` } });
+      addNotification("Listing created successfully!", "success");
+      navigate("/");
+    } catch (error) {
+      console.error(error);
+      addNotification("Failed to create listing", "error");
+    }
   };
 
   return (

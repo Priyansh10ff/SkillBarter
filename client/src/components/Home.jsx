@@ -1,15 +1,18 @@
 import { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import AuthContext from "../context/AuthContext";
+import { useNotification } from "../context/NotificationContext";
 import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { Search, Clock, ArrowRight, Sparkles, Zap, BookOpen, User } from "lucide-react";
 import Hero3D from "./Hero3D";
+import toast from "react-hot-toast";
 
 const Home = () => {
   const [listings, setListings] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const { user, refreshUser } = useContext(AuthContext);
+  const { addNotification } = useNotification();
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -28,18 +31,21 @@ const Home = () => {
   });
 
   const handleBook = async (id) => {
-    if (!user) return alert("Login required!");
-    if (user.timeCredits < 1) return alert("Not enough credits!");
-    if (!window.confirm("Spend 1 Credit?")) return;
+    if (!user) return addNotification("Please login to book a class", "error");
+    if (user.timeCredits < 1) return addNotification("Insufficient credits! You need at least 1 credit.", "error");
+    
+    const toastId = toast.loading("Processing booking...");
 
     try {
       const token = localStorage.getItem("token");
       await axios.post("/api/transactions/book", { listingId: id }, { headers: { Authorization: `Bearer ${token}` } });
-      alert("Booking Confirmed!");
+      toast.dismiss(toastId);
+      addNotification("Booking Confirmed! 1 Credit deducted.", "success");
       refreshUser();
     } catch (err) { 
+      toast.dismiss(toastId);
       console.error(err);
-      alert("Failed."); 
+      addNotification(err.response?.data?.message || "Booking Failed", "error"); 
     }
   };
 
