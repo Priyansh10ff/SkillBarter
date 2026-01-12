@@ -10,7 +10,7 @@ const Leaderboard = () => {
     const fetchLeaderboard = async () => {
       try {
         // Public endpoint, no auth needed technically, but if protected, use token
-        const { data } = await axios.get("http://localhost:5000/api/users/leaderboard");
+        const { data } = await axios.get("/api/users/leaderboard");
         setLeaders(data);
       } catch (error) {
         console.error("Failed to fetch leaderboard", error);

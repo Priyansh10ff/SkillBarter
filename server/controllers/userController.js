@@ -76,8 +76,47 @@ const getMe = async (req, res) => {
   res.status(200).json(req.user);
 };
 
+// @desc    Update user profile
+// @route   PUT /api/users/profile
+// @access  Private
+const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (req.body.preferredHours) {
+      user.preferredHours = req.body.preferredHours;
+    }
+    // Add other fields to update as needed
+
+    const updatedUser = await user.save();
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get leaderboard
+// @route   GET /api/users/leaderboard
+// @access  Public
+const getLeaderboard = async (req, res) => {
+  try {
+    const users = await User.find({})
+      .sort({ 'stats.classesTaught': -1 })
+      .limit(10)
+      .select('name stats badges');
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getMe,
+  updateProfile,
+  getLeaderboard,
 };

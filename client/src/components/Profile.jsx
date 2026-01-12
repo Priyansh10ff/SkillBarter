@@ -20,7 +20,7 @@ const Profile = () => {
       try {
         const token = localStorage.getItem("token");
         const config = { headers: { Authorization: `Bearer ${token}` } };
-        const { data } = await axios.get("http://localhost:5000/api/listings/my", config);
+        const { data } = await axios.get("/api/listings/my", config);
         setMyListings(data);
       } catch (error) {
         console.error(error);
@@ -35,7 +35,7 @@ const Profile = () => {
 
     try {
         const token = localStorage.getItem("token");
-        await axios.put("http://localhost:5000/api/users/profile", { preferredHours }, {
+        await axios.put("/api/users/profile", { preferredHours }, {
             headers: { Authorization: `Bearer ${token}` }
         });
         toast.success("Profile updated!");
@@ -72,7 +72,7 @@ const Profile = () => {
   const performDelete = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/listings/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.delete(`/api/listings/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       setMyListings(myListings.filter(l => l._id !== id));
       toast.success("Listing deleted successfully!");
     } catch (error) {

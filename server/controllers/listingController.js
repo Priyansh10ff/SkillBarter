@@ -73,9 +73,27 @@ const deleteListing = async (req, res) => {
   }
 };
 
+// @desc    Get single listing
+// @route   GET /api/listings/:id
+// @access  Public
+const getListingById = async (req, res) => {
+  try {
+    const listing = await Listing.findById(req.params.id).populate('teacher', 'name rating');
+
+    if (!listing) {
+      return res.status(404).json({ message: 'Listing not found' });
+    }
+
+    res.status(200).json(listing);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getListings,
   createListing,
   getMyListings,
   deleteListing,
+  getListingById,
 };

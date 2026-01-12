@@ -20,6 +20,7 @@ app.use(express.json());
 const allowedOrigins = [
   process.env.CLIENT_URL,
   "http://localhost:3000",
+  "http://localhost:5173",
 ];
 
 app.use(
@@ -30,7 +31,7 @@ app.use(
 );
 
 // ===== ROUTES =====
-app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/listings", require("./routes/listingRoutes"));
 app.use("/api/transactions", require("./routes/transactionRoutes"));
 

@@ -5,6 +5,7 @@ const {
   createListing,
   getListingById,
   deleteListing,
+  getMyListings,
 } = require("../controllers/listingController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -13,6 +14,7 @@ router.get("/", getListings);
 
 // Protected routes (must be logged in)
 router.post("/", protect, createListing);
+router.get("/my", protect, getMyListings);
 router.get("/:id", getListingById);
 router.delete("/:id", protect, deleteListing);
 

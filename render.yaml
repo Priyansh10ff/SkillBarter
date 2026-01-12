@@ -11,7 +11,4 @@ services:
       - key: PORT
         value: 5000
       - key: CLIENT_URL
-        fromService:
-          type: web
-          name: skill-barter-client
-          property: url
+        value: https://skill-barter-client.vercel.app
