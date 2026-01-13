@@ -49,8 +49,13 @@ export const AuthProvider = ({ children }) => {
     try {
       // FIX 3: Removed http://localhost:5000
       const { data } = await axios.post("/api/users", { name, email, password, skills });
-      localStorage.setItem("token", data.token);
-      setUser(data);
+      
+      // If the backend returns a token, log the user in (legacy behavior or if verification is off)
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        setUser(data);
+      }
+      
       return { success: true, data };
     } catch (error) {
       console.error("Registration failed:", error);

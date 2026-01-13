@@ -10,6 +10,7 @@ import Transactions from "./components/Transactions";
 import VideoRoom from "./components/VideoRoom";
 import Profile from "./components/Profile";
 import Leaderboard from "./components/Leaderboard";
+import VerifyEmail from "./components/VerifyEmail";
 import axios from "axios"; // 1. Import Axios
 
 // 2. Set the Global Base URL for API calls
@@ -28,6 +29,7 @@ const App = () => {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/verify-email/:token" element={<VerifyEmail />} />
               <Route path="/create-listing" element={<CreateListing />} />
               <Route path="/my-transactions" element={<Transactions />} />
               <Route path="/room/:id" element={<VideoRoom />} />

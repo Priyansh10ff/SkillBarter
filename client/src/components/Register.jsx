@@ -15,9 +15,15 @@ const Register = () => {
     e.preventDefault();
     try {
       const skillsArray = formData.skills ? formData.skills.split(',').map(s => s.trim()).filter(s => s) : [];
-      await register(formData.name, formData.email, formData.password, skillsArray);
-      addNotification("Registration successful! 2 Free Credits added.", "success");
-      navigate("/");
+      const res = await register(formData.name, formData.email, formData.password, skillsArray);
+      
+      if (res.data.token) {
+        addNotification("Registration successful! 2 Free Credits added.", "success");
+        navigate("/");
+      } else {
+        addNotification(res.data.message || "Registration successful. Please check your email.", "success");
+        navigate("/login");
+      }
     } catch (error) {
       console.error("Registration Error:", error);
       addNotification(error.response?.data?.message || error.message || "Registration Failed", "error");
