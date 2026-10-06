@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useEffect, useCallback } from "react";
-import api, { TOKEN_KEY } from "../api/client";
+import toast from "react-hot-toast";
+import api, { SESSION_EXPIRED_EVENT, TOKEN_KEY } from "../api/client";
 
 export const AuthContext = createContext();
 
@@ -10,42 +11,61 @@ export const AuthProvider = ({ children }) => {
 
   // Restore the session on page load
   useEffect(() => {
-    const checkUserLoggedIn = async () => {
+    const restore = async () => {
       if (localStorage.getItem(TOKEN_KEY)) {
         try {
           const { data } = await api.get("/api/users/me");
           setUser(data);
-        } catch (error) {
-          console.error(error);
+        } catch {
           localStorage.removeItem(TOKEN_KEY);
         }
       }
       setLoading(false);
     };
-    checkUserLoggedIn();
-  }, []);
-
-  const login = useCallback(async (email, password) => {
-    const { data } = await api.post("/api/users/login", { email, password });
-    localStorage.setItem(TOKEN_KEY, data.token);
-    setUser(data.user);
-    return { success: true, data };
-  }, []);
-
-  const register = useCallback(async (name, email, password, skills) => {
-    const { data } = await api.post("/api/users", { name, email, password, skills });
-    return { success: true, data };
-  }, []);
-
-  // Used after email verification, which returns a session directly
-  const loginWithToken = useCallback((token, nextUser) => {
-    localStorage.setItem(TOKEN_KEY, token);
-    setUser(nextUser);
+    restore();
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
+  }, []);
+
+  // Session ended on the server (expired token, password changed elsewhere)
+  useEffect(() => {
+    const onExpired = (e) => {
+      if (!localStorage.getItem(TOKEN_KEY)) return;
+      logout();
+      toast.error(e.detail || "Your session ended. Log in again.");
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [logout]);
+
+  // Stores a session returned by login, email verification or password reset
+  const loginWithToken = useCallback((token, nextUser) => {
+    localStorage.setItem(TOKEN_KEY, token);
+    if (nextUser) setUser(nextUser);
+  }, []);
+
+  const login = useCallback(
+    async (email, password) => {
+      const { data } = await api.post("/api/auth/login", { email, password });
+      loginWithToken(data.token, data.user);
+      return data.user;
+    },
+    [loginWithToken]
+  );
+
+  const register = useCallback(async (name, email, password, skills) => {
+    const { data } = await api.post("/api/auth/register", { name, email, password, skills });
+    return data;
+  }, []);
+
+  // Saves profile fields and keeps the local user in sync
+  const updateProfile = useCallback(async (fields) => {
+    const { data } = await api.put("/api/users/me", fields);
+    setUser(data);
+    return data;
   }, []);
 
   // Re-fetch the user (e.g. after a credit change)
@@ -60,7 +80,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithToken, register, logout, loading, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, register, logout, refreshUser, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

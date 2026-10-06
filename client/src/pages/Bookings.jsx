@@ -1,4 +1,5 @@
 import { useCallback, useContext, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { CalendarClock, Video } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../api/client";
@@ -32,7 +33,11 @@ const BookingCard = ({ booking: b, userId, onAction }) => {
           <div className="min-w-0">
             <h3 className="font-medium text-ink">{b.listingSnapshot?.title}</h3>
             <p className="text-sm text-muted">
-              {learning ? "Learning from" : "Teaching"} {other?.name} · {formatDuration(b.listingSnapshot?.duration)}
+              {learning ? "Learning from" : "Teaching"}{" "}
+              <Link to={`/u/${other?._id}`} className="text-ink hover:underline underline-offset-4">
+                {other?.name}
+              </Link>{" "}
+              · {formatDuration(b.listingSnapshot?.duration)}
             </p>
           </div>
         </div>

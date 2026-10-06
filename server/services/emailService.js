@@ -3,7 +3,7 @@ const env = require("../config/env");
 const escapeHtml = require("../utils/escapeHtml");
 
 // Emails that were not sent through SMTP (tests, or no EMAIL_* configured locally).
-// Tests read verification links from here.
+// Tests read links from here.
 const outbox = [];
 
 const transporter =
@@ -20,22 +20,42 @@ const sendMail = async ({ to, subject, text, html }) => {
   await transporter.sendMail({ from: `Skill Barter <${env.EMAIL_USER}>`, to, subject, text, html });
 };
 
-const sendVerificationEmail = (user, rawToken) => {
-  const url = `${env.CLIENT_URL}/verify-email/${rawToken}`;
+// One plain layout for every email: greeting, a line, a button, the raw link, a footnote
+const linkEmail = ({ user, subject, intro, action, url, footnote }) => {
   const name = escapeHtml(user.name);
   return sendMail({
     to: user.email,
-    subject: "Verify your email - Skill Barter",
-    text: `Hi ${user.name},\n\nConfirm your email to start trading hours on Skill Barter:\n${url}\n\nThe link expires in 24 hours. If you didn't sign up, ignore this email.`,
+    subject,
+    text: `Hi ${user.name},\n\n${intro}\n${url}\n\n${footnote}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#111">
         <p>Hi ${name},</p>
-        <p>Confirm your email to start trading hours on Skill Barter.</p>
-        <p><a href="${url}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;text-decoration:none;border-radius:4px">Verify email</a></p>
+        <p>${escapeHtml(intro)}</p>
+        <p><a href="${url}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;text-decoration:none;border-radius:4px">${escapeHtml(action)}</a></p>
         <p style="color:#666;font-size:13px">Or paste this link into your browser:<br>${url}</p>
-        <p style="color:#999;font-size:12px">The link expires in 24 hours. If you didn't sign up, ignore this email.</p>
+        <p style="color:#999;font-size:12px">${escapeHtml(footnote)}</p>
       </div>`,
   });
 };
 
-module.exports = { sendMail, sendVerificationEmail, outbox };
+const sendVerificationEmail = (user, rawToken) =>
+  linkEmail({
+    user,
+    subject: "Verify your email - Skill Barter",
+    intro: "Confirm your email to start trading hours on Skill Barter:",
+    action: "Verify email",
+    url: `${env.CLIENT_URL}/verify-email/${rawToken}`,
+    footnote: "The link expires in 24 hours. If you didn't sign up, ignore this email.",
+  });
+
+const sendPasswordResetEmail = (user, rawToken) =>
+  linkEmail({
+    user,
+    subject: "Reset your password - Skill Barter",
+    intro: "Someone asked to reset your Skill Barter password. If it was you, choose a new one here:",
+    action: "Choose a new password",
+    url: `${env.CLIENT_URL}/reset-password/${rawToken}`,
+    footnote: "The link expires in 1 hour. If you didn't ask for this, ignore this email and your password stays the same.",
+  });
+
+module.exports = { sendMail, sendVerificationEmail, sendPasswordResetEmail, outbox };

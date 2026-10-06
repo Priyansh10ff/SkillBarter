@@ -115,7 +115,7 @@ const Navbar = () => {
             </div>
           )}
           <ul className="py-2">
-            {[...links, ...(user ? [{ to: "/create-listing", label: "Post a skill" }, { to: "/profile", label: "Profile" }] : [])].map((l) => (
+            {[...links, ...(user ? [{ to: "/create-listing", label: "Post a skill" }, { to: "/profile", label: "Profile" }, { to: "/settings", label: "Settings" }] : [])].map((l) => (
               <li key={l.to}>
                 <NavLink
                   to={l.to}

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Avatar, Button, Hours, Stamp } from "../ui";
 import { formatDuration } from "../../lib/format";
 
@@ -23,10 +24,10 @@ export const ListingRow = ({ listing, isOwn, onBook, booking }) => (
       </p>
     </div>
 
-    <div className="hidden md:flex items-center gap-2 min-w-0">
+    <Link to={`/u/${listing.teacher?._id}`} className="hidden md:flex items-center gap-2 min-w-0 group">
       <Avatar name={listing.teacher?.name} size="sm" />
-      <span className="text-sm truncate">{listing.teacher?.name}</span>
-    </div>
+      <span className="text-sm truncate group-hover:underline underline-offset-4">{listing.teacher?.name}</span>
+    </Link>
 
     <span className="hidden md:block font-mono text-2xs uppercase tracking-wider text-muted">{listing.category}</span>
 

@@ -32,8 +32,14 @@ export const UserMenu = () => {
           <Link to="/profile" onClick={close} className="block px-3 py-2 text-sm text-muted hover:text-ink hover:bg-raised">
             Profile
           </Link>
+          <Link to={`/u/${user._id}`} onClick={close} className="block px-3 py-2 text-sm text-muted hover:text-ink hover:bg-raised">
+            Public profile
+          </Link>
           <Link to="/bookings" onClick={close} className="block px-3 py-2 text-sm text-muted hover:text-ink hover:bg-raised">
             Bookings
+          </Link>
+          <Link to="/settings" onClick={close} className="block px-3 py-2 text-sm text-muted hover:text-ink hover:bg-raised">
+            Settings
           </Link>
           <button type="button" onClick={handleLogout} className="block w-full text-left px-3 py-2 text-sm text-muted hover:text-ink hover:bg-raised">
             Log out

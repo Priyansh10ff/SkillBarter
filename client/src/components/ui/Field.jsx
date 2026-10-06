@@ -7,7 +7,7 @@ import { controlClass } from "./controlClass";
  * receives the right id and aria attributes:
  *   <Field label="Email" error={errors.email}>{(p) => <Input {...p} />}</Field>
  */
-export const Field = ({ label, hint, error, counter, children, className }) => {
+export const Field = ({ label, hint, error, counter, aside, children, className }) => {
   const id = useId();
   const describedBy = `${id}-desc`;
   return (
@@ -17,7 +17,7 @@ export const Field = ({ label, hint, error, counter, children, className }) => {
           <label htmlFor={id} className="text-sm font-medium text-ink">
             {label}
           </label>
-          {counter && <span className="font-mono text-2xs text-faint tabular">{counter}</span>}
+          {aside || (counter && <span className="font-mono text-2xs text-faint tabular">{counter}</span>)}
         </div>
       )}
       {children({ id, invalid: Boolean(error), "aria-invalid": error ? true : undefined, "aria-describedby": describedBy })}

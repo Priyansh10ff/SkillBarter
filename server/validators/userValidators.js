@@ -1,20 +1,5 @@
 const { z, skillList } = require("./common");
-
-const email = z.string().trim().toLowerCase().pipe(z.email("Enter a valid email"));
-
-const register = z.object({
-  name: z.string().trim().min(2, "Name must be at least 2 characters").max(60),
-  email,
-  password: z.string().min(8, "Password must be at least 8 characters").max(72),
-  skills: skillList.optional(), // skills they can teach
-});
-
-const login = z.object({
-  email,
-  password: z.string().min(1, "Password is required"),
-});
-
-const tokenParam = z.object({ token: z.string().regex(/^[a-f\d]{64}$/i, "Invalid or expired link") });
+const { password } = require("./authValidators");
 
 const isTimezone = (tz) => {
   try {
@@ -27,14 +12,20 @@ const isTimezone = (tz) => {
 
 const profile = z
   .object({
-    name: z.string().trim().min(2).max(60),
-    bio: z.string().trim().max(500),
+    name: z.string().trim().min(2, "Name must be at least 2 characters").max(60),
+    bio: z.string().trim().max(500, "Bio must be at most 500 characters"),
     skillsOffered: skillList,
     skillsRequested: skillList,
     preferredHours: z.string().trim().max(100),
     timezone: z.string().refine(isTimezone, "Unknown timezone"),
+    onboarded: z.literal(true), // finishing the setup steps
   })
   .partial()
   .strip();
 
-module.exports = { register, login, tokenParam, profile };
+const changePassword = z.object({
+  currentPassword: z.string().min(1, "Enter your current password"),
+  newPassword: password,
+});
+
+module.exports = { profile, changePassword };

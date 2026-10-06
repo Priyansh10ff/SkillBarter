@@ -1,92 +1,42 @@
 const bcrypt = require("bcryptjs");
-const disposableDomains = require("disposable-email-domains");
 const User = require("../models/User");
-const CreditEntry = require("../models/CreditEntry");
+const Listing = require("../models/Listing");
 const AppError = require("../utils/AppError");
-const { signToken, hashToken, createOneTimeToken } = require("../utils/tokens");
-const { runInTransaction, grantSignupBonus } = require("../services/creditService");
-const { sendVerificationEmail } = require("../services/emailService");
+const { signToken } = require("../utils/tokens");
+const { passwordChangedNow } = require("./authController");
 
-const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
-const disposable = new Set(disposableDomains);
-
-// POST /api/users
-const registerUser = async (req, res) => {
-  const { name, email, password, skills = [] } = req.valid.body;
-
-  if (disposable.has(email.split("@")[1])) throw new AppError(400, "Disposable email addresses are not allowed");
-  if (await User.exists({ email })) throw new AppError(409, "An account with this email already exists");
-
-  const { raw, hash } = createOneTimeToken();
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  let user;
-  await runInTransaction(async (session) => {
-    [user] = await User.create(
-      [
-        {
-          name,
-          email,
-          password: hashedPassword,
-          skillsOffered: skills,
-          verificationToken: hash,
-          verificationExpires: new Date(Date.now() + VERIFY_TTL_MS),
-        },
-      ],
-      { session }
-    );
-    await grantSignupBonus(user._id, session);
-  });
-
-  try {
-    await sendVerificationEmail(user, raw);
-  } catch (error) {
-    console.error("Verification email failed:", error);
-    await Promise.all([User.deleteOne({ _id: user._id }), CreditEntry.deleteMany({ user: user._id })]);
-    throw new AppError(502, "We couldn't send the verification email. Please try again.");
-  }
-
-  res.status(201).json({ message: "Account created. Check your email to verify it." });
-};
-
-// POST /api/users/login
-const loginUser = async (req, res) => {
-  const { email, password } = req.valid.body;
-  const user = await User.findOne({ email }).select("+password");
-
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    throw new AppError(401, "Wrong email or password");
-  }
-  if (!user.isVerified) throw new AppError(403, "Verify your email before logging in");
-
-  res.json({ token: signToken(user._id), user });
-};
-
-// GET /api/users/verify-email/:token
-const verifyEmail = async (req, res) => {
-  const user = await User.findOne({
-    verificationToken: hashToken(req.valid.params.token),
-    verificationExpires: { $gt: new Date() },
-  });
-  if (!user) throw new AppError(400, "This link is invalid or has expired");
-
-  user.isVerified = true;
-  user.verificationToken = undefined;
-  user.verificationExpires = undefined;
-  await user.save();
-
-  res.json({ message: "Email verified.", token: signToken(user._id), user });
-};
+const PUBLIC_FIELDS = "name bio skillsOffered skillsRequested preferredHours timezone stats rating ratingCount badges createdAt";
 
 // GET /api/users/me
 const getMe = (req, res) => {
   res.json(req.user);
 };
 
-// PUT /api/users/profile
-const updateProfile = async (req, res) => {
-  const user = await User.findByIdAndUpdate(req.user._id, req.valid.body, { returnDocument: "after", runValidators: true });
+// PUT /api/users/me
+const updateMe = async (req, res) => {
+  const { onboarded, ...fields } = req.valid.body;
+  const update = { ...fields };
+  if (onboarded && !req.user.onboardedAt) update.onboardedAt = new Date();
+
+  const user = await User.findByIdAndUpdate(req.user._id, update, { returnDocument: "after", runValidators: true });
   res.json(user);
+};
+
+// PUT /api/users/me/password
+const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.valid.body;
+  const user = await User.findById(req.user._id).select("+password");
+
+  if (!(await bcrypt.compare(currentPassword, user.password))) {
+    throw new AppError(400, "Current password is wrong", [{ field: "currentPassword", message: "Current password is wrong" }]);
+  }
+
+  user.password = await bcrypt.hash(newPassword, 10);
+  user.passwordChangedAt = passwordChangedNow();
+  await user.save();
+
+  // other sessions are logged out; this one gets a fresh token
+  res.json({ message: "Password changed.", token: signToken(user._id) });
 };
 
 // GET /api/users/leaderboard
@@ -98,4 +48,13 @@ const getLeaderboard = async (req, res) => {
   res.json(users);
 };
 
-module.exports = { registerUser, loginUser, verifyEmail, getMe, updateProfile, getLeaderboard };
+// GET /api/users/:id  (public profile, no email)
+const getPublicProfile = async (req, res) => {
+  const user = await User.findOne({ _id: req.valid.params.id, isVerified: true }).select(PUBLIC_FIELDS);
+  if (!user) throw new AppError(404, "Member not found");
+
+  const listings = await Listing.find({ teacher: user._id, isActive: true }).sort({ createdAt: -1 });
+  res.json({ user, listings });
+};
+
+module.exports = { getMe, updateMe, changePassword, getLeaderboard, getPublicProfile };

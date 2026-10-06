@@ -37,3 +37,14 @@ export const apiError = (error, fallback = "Something went wrong") => error?.res
 // Server validation details → { field: message }
 export const fieldErrors = (error) =>
   Object.fromEntries((error?.response?.data?.details || []).map((d) => [d.field, d.message]));
+
+// Current local time in another timezone, e.g. "21:30"
+export const timeIn = (timeZone) => {
+  try {
+    return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone }).format(new Date());
+  } catch {
+    return null;
+  }
+};
+
+export const browserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";

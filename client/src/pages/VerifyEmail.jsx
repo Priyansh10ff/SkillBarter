@@ -1,30 +1,31 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../api/client";
 import AuthContext from "../context/AuthContext";
 import { apiError } from "../lib/format";
-import { Button, Spinner } from "../components/ui";
+import { Spinner } from "../components/ui";
 import { AuthLayout, FormError } from "../components/auth/AuthLayout";
 
 const VerifyEmail = () => {
   const { token } = useParams();
   const { loginWithToken } = useContext(AuthContext);
-  const [state, setState] = useState({ status: "verifying" });
+  const navigate = useNavigate();
+  const [error, setError] = useState("");
   const started = useRef(false); // links work once; StrictMode runs effects twice in dev
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
     api
-      .get(`/api/users/verify-email/${token}`)
+      .get(`/api/auth/verify-email/${token}`)
       .then(({ data }) => {
         loginWithToken(data.token, data.user);
-        setState({ status: "done" });
+        navigate("/welcome", { replace: true });
       })
-      .catch((error) => setState({ status: "failed", message: apiError(error, "This link didn't work.") }));
-  }, [token, loginWithToken]);
+      .catch((err) => setError(apiError(err, "This link didn't work.")));
+  }, [token, loginWithToken, navigate]);
 
-  if (state.status === "verifying") {
+  if (!error) {
     return (
       <AuthLayout title="Verifying your email">
         <p className="flex items-center gap-2 text-muted">
@@ -34,23 +35,19 @@ const VerifyEmail = () => {
     );
   }
 
-  if (state.status === "failed") {
-    return (
-      <AuthLayout title="Link didn't work" footer={<Link to="/login" className="text-ink underline underline-offset-4">Back to log in</Link>}>
-        <FormError>{state.message}</FormError>
-        <p className="mt-4 text-sm text-muted">Links expire after 24 hours and can only be used once. If you already verified, just log in.</p>
-      </AuthLayout>
-    );
-  }
-
   return (
-    <AuthLayout title="Email verified" description="You're logged in and your welcome credits are ready.">
-      <div className="flex flex-wrap gap-2">
-        <Button variant="primary" to="/">
-          Find something to learn
-        </Button>
-        <Button to="/create-listing">Post a skill</Button>
-      </div>
+    <AuthLayout
+      title="Link didn't work"
+      footer={
+        <Link to="/login" className="text-ink underline underline-offset-4">
+          Back to log in
+        </Link>
+      }
+    >
+      <FormError>{error}</FormError>
+      <p className="mt-4 text-sm text-muted">
+        Links expire after 24 hours and work once. If you already verified, just log in. Otherwise log in and use “Send a new link”.
+      </p>
     </AuthLayout>
   );
 };

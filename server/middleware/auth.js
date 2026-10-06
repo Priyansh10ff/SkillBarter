@@ -15,8 +15,11 @@ const protect = async (req, res, next) => {
     throw new AppError(401, "Not authorized, invalid or expired token");
   }
 
-  const user = await User.findById(decoded.id);
+  const user = await User.findById(decoded.id).select("+passwordChangedAt");
   if (!user) throw new AppError(401, "Not authorized, account not found");
+  if (user.passwordChangedAt && decoded.iat * 1000 < user.passwordChangedAt.getTime()) {
+    throw new AppError(401, "Your password changed. Log in again.");
+  }
 
   req.user = user;
   next();

@@ -9,3 +9,9 @@ export const BOOKING_STATUS = {
   CANCELLED: "CANCELLED",
   DISPUTED: "DISPUTED",
 };
+
+// Shown as one-tap suggestions while picking skills
+export const SUGGESTED_SKILLS = [
+  "react", "python", "dsa", "system design", "figma", "ui design", "guitar", "piano",
+  "spanish", "japanese", "public speaking", "photography", "video editing", "chess", "cooking", "fitness",
+];

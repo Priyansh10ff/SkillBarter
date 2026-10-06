@@ -30,7 +30,9 @@ const errorHandler = (err, req, res, next) => {
     if (env.NODE_ENV === "production") message = "Server error";
   }
 
-  res.status(status).json({ message, ...(details ? { details } : {}) });
+  // string codes (e.g. EMAIL_UNVERIFIED) let the client react to specific errors
+  const code = typeof err.code === "string" ? err.code : undefined;
+  res.status(status).json({ message, ...(code ? { code } : {}), ...(details ? { details } : {}) });
 };
 
 module.exports = { notFound, errorHandler };

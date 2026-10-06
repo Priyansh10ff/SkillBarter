@@ -11,6 +11,11 @@ import { PageLoader } from "./components/layout/PageLoader";
 const Home = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Welcome = lazy(() => import("./pages/Welcome"));
+const Settings = lazy(() => import("./pages/Settings"));
+const PublicProfile = lazy(() => import("./pages/PublicProfile"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const CreateListing = lazy(() => import("./pages/CreateListing"));
 const Bookings = lazy(() => import("./pages/Bookings"));
@@ -31,11 +36,16 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/verify-email/:token" element={<VerifyEmail />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/u/:id" element={<PublicProfile />} />
               <Route element={<ProtectedRoute />}>
                 <Route path="/create-listing" element={<CreateListing />} />
                 <Route path="/bookings" element={<Bookings />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/welcome" element={<Welcome />} />
               </Route>
               <Route path="/my-transactions" element={<Navigate to="/bookings" replace />} />
               {StyleGuide && <Route path="/dev/ui" element={<StyleGuide />} />}

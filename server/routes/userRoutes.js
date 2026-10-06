@@ -3,15 +3,16 @@ const c = require("../controllers/userController");
 const { protect } = require("../middleware/auth");
 const validate = require("../middleware/validate");
 const { authLimiter } = require("../middleware/rateLimit");
+const { idParam } = require("../validators/common");
 const v = require("../validators/userValidators");
 
 const router = express.Router();
 
-router.post("/", authLimiter, validate({ body: v.register }), c.registerUser);
-router.post("/login", authLimiter, validate({ body: v.login }), c.loginUser);
-router.get("/verify-email/:token", authLimiter, validate({ params: v.tokenParam }), c.verifyEmail);
+// fixed paths before /:id
 router.get("/leaderboard", c.getLeaderboard);
 router.get("/me", protect, c.getMe);
-router.put("/profile", protect, validate({ body: v.profile }), c.updateProfile);
+router.put("/me", protect, validate({ body: v.profile }), c.updateMe);
+router.put("/me/password", protect, authLimiter, validate({ body: v.changePassword }), c.changePassword);
+router.get("/:id", validate({ params: idParam }), c.getPublicProfile);
 
 module.exports = router;

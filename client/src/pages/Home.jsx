@@ -1,15 +1,11 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
-import toast from "react-hot-toast";
 import api from "../api/client";
 import AuthContext from "../context/AuthContext";
-import { useConfirm } from "../context/ConfirmContext";
+import { useBookListing } from "../hooks/useBookListing";
 import { CATEGORIES } from "../lib/constants";
-import { apiError, formatHours } from "../lib/format";
 import { Button, EmptyState, Hours, Input, PageHeader, Panel, PanelHeader, Select, SkeletonRows } from "../components/ui";
 import { ListingRow, ListingTableHead } from "../components/listings/ListingRow";
-import { BookingSummary } from "../components/listings/BookingSummary";
 
 const LEDGER_EXAMPLE = [
   ["welcome credits", 2],
@@ -64,13 +60,11 @@ const Intro = () => (
 );
 
 const Home = () => {
-  const { user, refreshUser } = useContext(AuthContext);
-  const confirm = useConfirm();
-  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
+  const { book, bookingId } = useBookListing();
   const [listings, setListings] = useState(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
-  const [bookingId, setBookingId] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -92,34 +86,6 @@ const Home = () => {
     );
   }, [listings, query, category]);
 
-  const book = async (listing) => {
-    if (!user) return navigate("/login", { state: { from: "/" } });
-
-    if (user.timeCredits < listing.creditCost) {
-      toast.error(`This costs ${formatHours(listing.creditCost)}. You have ${formatHours(user.timeCredits)}. Teach a session to earn more.`);
-      return;
-    }
-
-    const ok = await confirm({
-      title: `Book “${listing.title}”`,
-      body: <BookingSummary listing={listing} balance={user.timeCredits} />,
-      confirmLabel: `Book for ${formatHours(listing.creditCost)}`,
-    });
-    if (!ok) return;
-
-    setBookingId(listing._id);
-    try {
-      await api.post("/api/bookings", { listingId: listing._id });
-      await refreshUser();
-      toast.success("Booked. Now agree on a time.");
-      navigate("/bookings");
-    } catch (error) {
-      toast.error(apiError(error, "Booking failed"));
-    } finally {
-      setBookingId(null);
-    }
-  };
-
   return (
     <>
       {user ? (
@@ -140,6 +106,15 @@ const Home = () => {
         />
       ) : (
         <Intro />
+      )}
+
+      {user && !user.onboardedAt && (
+        <Panel className="mb-8 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-muted">Tell us what you teach and want to learn. It takes a minute and helps people find you.</p>
+          <Button size="sm" variant="primary" to="/welcome">
+            Finish setting up
+          </Button>
+        </Panel>
       )}
 
       <section id="listings" aria-label="Sessions" className="scroll-mt-24">

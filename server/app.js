@@ -29,6 +29,7 @@ app.get("/health", (req, res) => {
 
 // ===== ROUTES =====
 app.use("/api", apiLimiter);
+app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/listings", require("./routes/listingRoutes"));
 app.use("/api/bookings", require("./routes/bookingRoutes"));
