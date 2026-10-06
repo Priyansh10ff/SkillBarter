@@ -6,7 +6,8 @@ import { apiError, fromNow } from "../../lib/format";
 import { Button, Input, cx } from "../ui";
 
 // Messages between learner and teacher on one booking, live over the socket
-export const BookingChat = ({ bookingId, userId }) => {
+// fill: stretch to the parent's height (session room side panel)
+export const BookingChat = ({ bookingId, userId, fill = false }) => {
   const { socket } = useSocket();
   const [messages, setMessages] = useState(null);
   const [draft, setDraft] = useState("");
@@ -55,8 +56,8 @@ export const BookingChat = ({ bookingId, userId }) => {
   };
 
   return (
-    <div className="border border-line rounded bg-bg">
-      <div ref={listRef} className="max-h-64 overflow-y-auto p-3 space-y-3" aria-live="polite">
+    <div className={cx("border border-line rounded bg-bg", fill && "flex h-full flex-col")}>
+      <div ref={listRef} className={cx("overflow-y-auto p-3 space-y-3", fill ? "min-h-0 flex-1" : "max-h-64")} aria-live="polite">
         {messages === null ? (
           <p className="text-sm text-faint">Loading…</p>
         ) : messages.length === 0 ? (

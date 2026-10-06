@@ -27,6 +27,7 @@ const BookingCard = ({ booking: b, userId, onAction, highlighted }) => {
   const myProposal = b.proposal?.by === userId;
   const started = b.scheduledAt && dayjs(b.scheduledAt).isBefore(dayjs());
   const canCancel = b.status === S.PENDING || (b.status === S.SCHEDULED && !started);
+  const roomOpen = b.scheduledAt && dayjs(b.scheduledAt).subtract(15, "minute").isBefore(dayjs());
 
   return (
     <li id={b._id} className={cx("p-4 md:p-5 space-y-4 scroll-mt-24 transition-colors", highlighted && "bg-raised/60")}>
@@ -93,11 +94,14 @@ const BookingCard = ({ booking: b, userId, onAction, highlighted }) => {
       {b.status === S.CANCELLED && b.cancelReason && <p className="text-sm text-muted">Reason: {b.cancelReason}</p>}
 
       <div className="flex flex-wrap gap-2">
-        {b.status === S.SCHEDULED && (
-          <Button size="sm" variant="primary" to={`/room/${b._id}?role=${learning ? "student" : "teacher"}`} target="_blank" rel="noreferrer">
-            <Video size={14} /> Join room
-          </Button>
-        )}
+        {b.status === S.SCHEDULED &&
+          (roomOpen ? (
+            <Button size="sm" variant="primary" to={`/room/${b._id}`}>
+              <Video size={14} /> Join room
+            </Button>
+          ) : (
+            <span className="self-center font-mono text-2xs text-faint">Room opens 15 min before</span>
+          ))}
         {b.status === S.SCHEDULED && learning && started && (
           <>
             <Button size="sm" onClick={() => onAction(b._id, "complete", {}, "Credits released", { kind: "complete", other })}>

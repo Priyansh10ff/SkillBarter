@@ -37,6 +37,12 @@ app.use("/api/wallet", require("./routes/walletRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 
+// ===== VIDEO SIGNALLING =====
+// PeerServer needs the HTTP server, so server.js attaches it to this mount point.
+// (Mounting here keeps it ahead of the 404 handler.)
+app.peerMount = express();
+app.use("/peerjs", app.peerMount);
+
 // ===== ERRORS =====
 app.use(notFound);
 app.use(errorHandler);

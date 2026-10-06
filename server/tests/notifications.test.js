@@ -109,16 +109,4 @@ describe("notifications, chat and sockets", () => {
     teacherSocket.close();
     learnerSocket.close();
   });
-
-  it("only participants of a scheduled booking can join its session room", async () => {
-    const { body: booking } = await book();
-    const outsider = await h.createUser();
-    const socket = connect(url, { auth: { token: outsider.token }, transports: ["websocket"], reconnection: false });
-    await new Promise((resolve) => socket.on("connect", resolve));
-
-    const denied = new Promise((resolve) => socket.on("room:denied", resolve));
-    socket.emit("join_room", booking._id);
-    assert.equal((await denied).bookingId, booking._id);
-    socket.close();
-  });
 });

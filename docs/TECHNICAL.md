@@ -185,7 +185,7 @@ SkillBarter/
     │   └── emailService.js       Nodemailer templates
     ├── sockets/
     │   ├── index.js              JWT handshake auth, personal rooms
-    │   └── roomHandlers.js       Session room: join, whiteboard, chat, presence
+    │   └── roomHandlers.js       Session room: join, presence, whiteboard
     ├── jobs/
     │   └── autoRelease.js        Releases credits 48h after scheduled end
     ├── utils/
@@ -201,7 +201,8 @@ SkillBarter/
         ├── users.test.js         Profile, password change, public profiles
         ├── listings.test.js      Search, paging, edits, suggestions, barter matches
         ├── bookings.test.js      Booking flow, credits, disputes, concurrency
-        └── notifications.test.js Notifications, booking chat, socket auth and rooms
+        ├── notifications.test.js Notifications, booking chat, socket auth
+        └── room.test.js          Room access window, peer IDs, presence, whiteboard relay
 ```
 
 ## 4. Data model
@@ -413,23 +414,24 @@ The client connects with `io(SOCKET_URL, { auth: { token } })`. The server verif
 ### Session room
 | Direction | Event | Payload | Notes |
 |---|---|---|---|
-| C → S | `room:join` | `{ bookingId }` | Server checks the user is learner or teacher of that booking and it is `SCHEDULED`; joins `room:<bookingId>` |
-| S → C | `room:peer-joined` / `room:peer-left` | `{ userId }` | Presence |
-| C → S → C | `wb:stroke` | `{ points, color, width }` | Broadcast to the other participant |
-| C → S → C | `wb:clear` | – | |
-| C → S | `room:message` | `{ body }` | Persisted as a Message, then broadcast as `message:new` |
+| C → S | `room:join` | `{ bookingId }`, ack `{ ok, others, strokes }` | Same rules as `GET /api/bookings/:id/room`: participant, `SCHEDULED`, inside the room window. `others` = users already in the room, `strokes` = current whiteboard |
+| S → C | `room:peer-joined` / `room:peer-left` | `{ userId }` | Presence; `peer-left` also fires on disconnect |
+| C → S → C | `wb:stroke` | `{ bookingId, stroke: { points: [[x, y]], color, width } }` | Points are 0–1 on a 4:3 board, width in 1000-px units. Validated (palette colours only, ≤ 500 points) and kept in memory for late joiners |
+| C → S → C | `wb:clear` | `{ bookingId }` | Clears the board for both |
 | C → S | `room:leave` | `{ bookingId }` | |
 
-Every room event checks that the socket has joined that room first.
+Whiteboard events from a socket that hasn't joined that room are ignored. In-room chat uses the booking messages API, so it's the same thread as the Bookings page.
 
 ## 8. Video room (WebRTC)
 
-- PeerServer is mounted on the API server at `/peerjs`, so the app does not depend on the public PeerJS cloud.
-- Peer IDs are generated server-side by `GET /api/bookings/:id/room` as `<bookingId>-learner` and `<bookingId>-teacher`. The client's role comes from that response, not from the URL.
-- ICE servers: Google public STUN by default. An optional TURN server can be added through `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` for users behind strict NATs.
-- Either side can start the call. The other side's browser answers automatically once both are in the room.
-- Screen share swaps the outgoing video track with `RTCRtpSender.replaceTrack` and restores the camera when sharing stops.
-- All media tracks are stopped and the peer destroyed when the user leaves the page.
+- **Access**: `GET /api/bookings/:id/room` returns the caller's role, both names, both peer IDs, the schedule and ICE servers. The room opens 15 minutes before `scheduledAt` and closes 3 hours after `endsAt`; outside that, or if the booking isn't `SCHEDULED`, it answers 400 with `code` `ROOM_NOT_OPEN` (plus `opensAt`), `ROOM_CLOSED` or `ROOM_NOT_SCHEDULED`.
+- **Peer IDs** are `<bookingId>-<role>-<HMAC>`, signed with `JWT_SECRET`, so they're stable for both sides but can't be guessed, squatted or called by anyone else.
+- **PeerServer** (`peer` package) is mounted at `/peerjs` on the API server (`config/peerServer.js`). Its WebSocket server rejects every upgrade outside its own path, which would kill Socket.IO on the same port, so it runs on a private `http.Server` and only `/peerjs` upgrades are forwarded to it.
+- **Who calls**: only the learner places the call (when the teacher is already present, or when they arrive); the teacher answers. This avoids both sides calling at once. If the other peer isn't registered yet, the learner retries once after 2 s.
+- **ICE**: Google public STUN by default; set `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` to add a TURN relay for users behind strict NATs.
+- **Screen share** swaps the outgoing video track with `RTCRtpSender.replaceTrack` and restores the camera when sharing stops (including the browser's own "Stop sharing" button).
+- **No camera or mic**: the room still works receive-only, with whiteboard and chat.
+- **Leaving** stops every media track (the camera light goes off), destroys the peer and leaves the socket room.
 
 ## 9. Auth and security
 
@@ -457,7 +459,7 @@ Every room event checks that the socket has joined that room first.
 | `CLIENT_URL` | `http://localhost:5173` | CORS origin and links in emails |
 | `EMAIL_USER` | `you@gmail.com` | Gmail sender. Optional outside production: without it, emails (including verification links) are printed to the server console |
 | `EMAIL_PASS` | 16-char app password | |
-| `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` | optional | TURN relay for WebRTC |
+| `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` | optional | TURN relay for WebRTC (e.g. Metered, Twilio, coturn) |
 
 ### `client/.env`
 | Key | Example | Purpose |

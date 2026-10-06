@@ -1,4 +1,5 @@
 const bookingService = require("../services/bookingService");
+const roomService = require("../services/roomService");
 
 const userId = (req) => req.user._id;
 
@@ -44,4 +45,8 @@ const postMessage = async (req, res) => {
   res.status(201).json(await bookingService.postMessage({ bookingId: req.valid.params.id, userId: userId(req), body: req.valid.body.body }));
 };
 
-module.exports = { create, list, getOne, propose, accept, cancel, complete, dispute, listMessages, postMessage };
+const room = async (req, res) => {
+  res.json(await roomService.roomInfo(req.valid.params.id, userId(req)));
+};
+
+module.exports = { room, create, list, getOne, propose, accept, cancel, complete, dispute, listMessages, postMessage };

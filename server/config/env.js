@@ -14,6 +14,10 @@ const schema = z
     CLIENT_URL: z.url().default("http://localhost:5173"),
     EMAIL_USER: optional,
     EMAIL_PASS: optional,
+    // Optional TURN relay for video calls behind strict NATs
+    TURN_URL: optional,
+    TURN_USERNAME: optional,
+    TURN_CREDENTIAL: optional,
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && (!env.EMAIL_USER || !env.EMAIL_PASS)) {

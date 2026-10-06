@@ -20,6 +20,9 @@ module.exports = {
   // Earliest a proposed time can be, and how far ahead it can go
   MIN_LEAD_MINUTES: 5,
   MAX_DAYS_AHEAD: 90,
+  // The session room opens this long before the start and closes this long after the end
+  ROOM_OPENS_MINUTES_BEFORE: 15,
+  ROOM_CLOSES_HOURS_AFTER: 3,
   CATEGORIES: ["Coding", "Design", "Music", "Language", "Academics", "Career", "Lifestyle", "Other"],
   DURATIONS: [30, 60, 90, 120],
   BOOKING_STATUS,
