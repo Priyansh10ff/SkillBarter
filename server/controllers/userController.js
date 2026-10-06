@@ -4,6 +4,7 @@ const Listing = require("../models/Listing");
 const AppError = require("../utils/AppError");
 const { signToken } = require("../utils/tokens");
 const { passwordChangedNow } = require("./authController");
+const { barterMatches } = require("../services/matchService");
 
 const PUBLIC_FIELDS = "name bio skillsOffered skillsRequested preferredHours timezone stats rating ratingCount badges createdAt";
 
@@ -39,6 +40,11 @@ const changePassword = async (req, res) => {
   res.json({ message: "Password changed.", token: signToken(user._id) });
 };
 
+// GET /api/users/matches → members you could swap hours with
+const getMatches = async (req, res) => {
+  res.json(await barterMatches(req.user));
+};
+
 // GET /api/users/leaderboard
 const getLeaderboard = async (req, res) => {
   const users = await User.find({ isVerified: true, "stats.classesTaught": { $gt: 0 } })
@@ -57,4 +63,4 @@ const getPublicProfile = async (req, res) => {
   res.json({ user, listings });
 };
 
-module.exports = { getMe, updateMe, changePassword, getLeaderboard, getPublicProfile };
+module.exports = { getMe, updateMe, changePassword, getMatches, getLeaderboard, getPublicProfile };

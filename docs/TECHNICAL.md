@@ -346,12 +346,12 @@ Base path `/api`. JSON in and out. Authenticated routes need `Authorization: Bea
 ### Listings — `/api/listings`
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/` | – | `?q=&category=&page=&limit=` active listings |
-| GET | `/suggested` | ✓ | Listings matching your `skillsRequested` |
+| GET | `/` | – | `?q=&category=&page=&limit=` active listings → `{ items, total, page, totalPages }` |
+| GET | `/suggested` | ✓ | Listings whose tags or title match your `skillsRequested` |
 | GET | `/my` | ✓ | Your listings |
-| GET | `/:id` | – | Single listing with teacher summary |
+| GET | `/:id` | – | `{ listing, more }`: the listing, its teacher, and up to 3 more by them |
 | POST | `/` | ✓ | Create |
-| PUT | `/:id` | ✓ owner | Update |
+| PUT | `/:id` | ✓ owner | Update. Existing bookings keep their snapshot |
 | DELETE | `/:id` | ✓ owner | Deactivate |
 
 ### Bookings — `/api/bookings`

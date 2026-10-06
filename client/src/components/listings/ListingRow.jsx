@@ -17,7 +17,11 @@ export const ListingTableHead = () => (
 export const ListingRow = ({ listing, isOwn, onBook, booking }) => (
   <li className={`grid grid-cols-[minmax(0,1fr)_auto] ${LISTING_GRID} gap-x-6 gap-y-1 items-center px-4 py-4 hover:bg-raised/40 transition-colors`}>
     <div className="min-w-0">
-      <h3 className="font-medium text-ink truncate">{listing.title}</h3>
+      <h3 className="font-medium text-ink truncate">
+        <Link to={`/listings/${listing._id}`} className="hover:underline underline-offset-4">
+          {listing.title}
+        </Link>
+      </h3>
       <p className="text-sm text-muted line-clamp-1">{listing.description}</p>
       <p className="mt-1.5 font-mono text-2xs uppercase tracking-wider text-faint md:hidden">
         {listing.teacher?.name} · {listing.category} · {formatDuration(listing.duration)}

@@ -18,6 +18,8 @@ const Settings = lazy(() => import("./pages/Settings"));
 const PublicProfile = lazy(() => import("./pages/PublicProfile"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const CreateListing = lazy(() => import("./pages/CreateListing"));
+const EditListing = lazy(() => import("./pages/EditListing"));
+const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const Bookings = lazy(() => import("./pages/Bookings"));
 const Room = lazy(() => import("./pages/Room"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -40,8 +42,10 @@ const App = () => (
               <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/u/:id" element={<PublicProfile />} />
+              <Route path="/listings/:id" element={<ListingDetail />} />
               <Route element={<ProtectedRoute />}>
                 <Route path="/create-listing" element={<CreateListing />} />
+                <Route path="/listings/:id/edit" element={<EditListing />} />
                 <Route path="/bookings" element={<Bookings />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/settings" element={<Settings />} />

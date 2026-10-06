@@ -1,4 +1,5 @@
 import { useContext, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../api/client";
 import AuthContext from "../context/AuthContext";
@@ -126,12 +127,17 @@ const Profile = () => {
             {listings.map((l) => (
               <li key={l._id} className="flex items-center gap-4 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{l.title}</p>
+                  <Link to={`/listings/${l._id}`} className="block font-medium truncate hover:underline underline-offset-4">
+                    {l.title}
+                  </Link>
                   <p className="font-mono text-2xs uppercase tracking-wider text-faint">
                     {l.category} · {formatDuration(l.duration)} · posted {formatDate(l.createdAt)}
                   </p>
                 </div>
                 <Hours value={l.creditCost} className="text-sm" />
+                <Button size="sm" variant="ghost" to={`/listings/${l._id}/edit`}>
+                  Edit
+                </Button>
                 <Button size="sm" variant="ghost" onClick={() => remove(l)}>
                   Remove
                 </Button>
