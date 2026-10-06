@@ -12,6 +12,7 @@ const stroke = { color: "#ECEAE3", width: 3, points: [[0.1, 0.1], [0.2, 0.25]] }
 
 describe("session room", () => {
   let server;
+  let io;
   let url;
   let teacher;
   let learner;
@@ -33,13 +34,17 @@ describe("session room", () => {
   before(async () => {
     await h.startDb();
     server = http.createServer(h.app);
-    setIO(initSockets(server));
+    io = initSockets(server);
+    setIO(io);
     await new Promise((resolve) => server.listen(0, resolve));
     url = `http://localhost:${server.address().port}`;
   });
   after(async () => {
+    // open client sockets keep server.close() waiting forever, so close them first
+    sockets.splice(0).forEach((s) => s.close());
     setIO(null);
-    await new Promise((resolve) => server.close(resolve));
+    await new Promise((resolve) => io.close(() => resolve())); // also closes the http server
+    server.closeAllConnections();
     await h.stopDb();
   });
   beforeEach(async () => {

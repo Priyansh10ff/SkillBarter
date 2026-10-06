@@ -13,6 +13,7 @@ const inHours = (hours) => new Date(Date.now() + hours * 60 * 60 * 1000).toISOSt
 
 describe("notifications, chat and sockets", () => {
   let server;
+  let io;
   let url;
   let teacher;
   let learner;
@@ -21,13 +22,17 @@ describe("notifications, chat and sockets", () => {
   before(async () => {
     await h.startDb();
     server = http.createServer(h.app);
-    setIO(initSockets(server));
+    io = initSockets(server);
+    setIO(io);
     await new Promise((resolve) => server.listen(0, resolve));
     url = `http://localhost:${server.address().port}`;
   });
   after(async () => {
+    // open client sockets keep server.close() waiting forever, so close them first
+    await io.fetchSockets().then((all) => all.forEach((s) => s.disconnect(true)));
     setIO(null);
-    await new Promise((resolve) => server.close(resolve));
+    await new Promise((resolve) => io.close(() => resolve())); // also closes the http server
+    server.closeAllConnections();
     await h.stopDb();
   });
   beforeEach(async () => {
