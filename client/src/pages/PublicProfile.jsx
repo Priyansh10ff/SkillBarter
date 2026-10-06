@@ -7,6 +7,7 @@ import { apiError, formatDate } from "../lib/format";
 import { Avatar, Button, EmptyState, Panel, PanelHeader, SkeletonRows, Stamp } from "../components/ui";
 import { ListingRow, ListingTableHead } from "../components/listings/ListingRow";
 import { AvailabilityPanel, SkillsPanel, Stat, StatStrip } from "../components/profile/ProfileParts";
+import { ReviewList } from "../components/profile/ReviewList";
 
 const PublicProfile = () => {
   const { id } = useParams();
@@ -87,6 +88,11 @@ const PublicProfile = () => {
           )}
         </div>
       </div>
+
+      <section>
+        <h2 className="text-lg mb-3">What people say</h2>
+        <ReviewList userId={user._id} name={user.name.split(" ")[0]} />
+      </section>
 
       <section>
         <h2 className="text-lg mb-3">Sessions by {user.name.split(" ")[0]}</h2>

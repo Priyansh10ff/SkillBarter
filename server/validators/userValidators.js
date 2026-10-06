@@ -28,4 +28,6 @@ const changePassword = z.object({
   newPassword: password,
 });
 
-module.exports = { profile, changePassword };
+const leaderboardQuery = z.object({ sort: z.enum(["taught", "rated"]).default("taught") });
+
+module.exports = { profile, changePassword, leaderboardQuery };

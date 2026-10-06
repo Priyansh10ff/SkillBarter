@@ -7,6 +7,7 @@ import { useConfirm } from "../context/ConfirmContext";
 import { apiError, formatDate, formatDuration } from "../lib/format";
 import { Avatar, Button, EmptyState, Hours, Panel, PanelHeader, SkeletonRows, Stamp } from "../components/ui";
 import { AvailabilityPanel, SkillsPanel, Stat, StatStrip } from "../components/profile/ProfileParts";
+import { ReviewList } from "../components/profile/ReviewList";
 
 const Profile = () => {
   const { user } = useContext(AuthContext);
@@ -108,6 +109,11 @@ const Profile = () => {
           )}
         </div>
       </div>
+
+      <section>
+        <h2 className="text-lg mb-3">Reviews you've received</h2>
+        <ReviewList userId={user._id} />
+      </section>
 
       <section>
         <div className="flex items-center justify-between mb-3">

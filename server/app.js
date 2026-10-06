@@ -36,6 +36,8 @@ app.use("/api/bookings", require("./routes/bookingRoutes"));
 app.use("/api/wallet", require("./routes/walletRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
+app.use("/api/reviews", require("./routes/reviewRoutes"));
+app.get("/api/stats", require("./controllers/statsController").getStats);
 
 // ===== VIDEO SIGNALLING =====
 // PeerServer needs the HTTP server, so server.js attaches it to this mount point.

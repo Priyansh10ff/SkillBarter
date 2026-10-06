@@ -9,7 +9,8 @@ import { useSocket } from "../context/SocketContext";
 import dayjs from "../lib/date";
 import { BOOKING_STATUS as S } from "../lib/constants";
 import { apiError, formatDateTime, formatDuration } from "../lib/format";
-import { Avatar, Button, EmptyState, Hours, Input, PageHeader, Segmented, SkeletonRows, StatusTag, cx } from "../components/ui";
+import { Avatar, Button, EmptyState, Hours, Input, PageHeader, Segmented, SkeletonRows, Stamp, StatusTag, cx } from "../components/ui";
+import { ReviewDialog } from "../components/bookings/ReviewDialog";
 import { BookingTrack } from "../components/bookings/BookingTrack";
 import { BookingChat } from "../components/bookings/BookingChat";
 
@@ -19,9 +20,10 @@ const FILTERS = [
   { value: "TEACHING", label: "Teaching" },
 ];
 
-const BookingCard = ({ booking: b, userId, onAction, highlighted }) => {
+const BookingCard = ({ booking: b, userId, onAction, highlighted, onReviewed }) => {
   const [date, setDate] = useState("");
   const [chatOpen, setChatOpen] = useState(highlighted);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const learning = b.learner?._id === userId;
   const other = learning ? b.teacher : b.learner;
   const myProposal = b.proposal?.by === userId;
@@ -112,6 +114,14 @@ const BookingCard = ({ booking: b, userId, onAction, highlighted }) => {
             </Button>
           </>
         )}
+        {b.status === S.COMPLETED &&
+          ((learning ? b.reviewedByLearner : b.reviewedByTeacher) ? (
+            <Stamp className="self-center">Reviewed</Stamp>
+          ) : (
+            <Button size="sm" onClick={() => setReviewOpen(true)}>
+              Leave a review
+            </Button>
+          ))}
         <Button size="sm" variant="ghost" onClick={() => setChatOpen((o) => !o)} aria-expanded={chatOpen}>
           <MessageSquare size={14} /> {chatOpen ? "Hide messages" : "Messages"}
         </Button>
@@ -123,6 +133,18 @@ const BookingCard = ({ booking: b, userId, onAction, highlighted }) => {
       </div>
 
       {chatOpen && <BookingChat bookingId={b._id} userId={userId} />}
+      {reviewOpen && (
+        <ReviewDialog
+          open
+          booking={b}
+          otherName={other?.name}
+          onClose={() => setReviewOpen(false)}
+          onDone={() => {
+            setReviewOpen(false);
+            onReviewed();
+          }}
+        />
+      )}
     </li>
   );
 };
@@ -234,7 +256,7 @@ const Bookings = () => {
       ) : (
         <ul className="border border-line rounded divide-y divide-line">
           {visible.map((b) => (
-            <BookingCard key={b._id} booking={b} userId={user?._id} onAction={onAction} highlighted={b._id === target} />
+            <BookingCard key={b._id} booking={b} userId={user?._id} onAction={onAction} highlighted={b._id === target} onReviewed={load} />
           ))}
         </ul>
       )}

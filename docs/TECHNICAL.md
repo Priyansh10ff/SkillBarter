@@ -202,7 +202,8 @@ SkillBarter/
         ├── listings.test.js      Search, paging, edits, suggestions, barter matches
         ├── bookings.test.js      Booking flow, credits, disputes, concurrency
         ├── notifications.test.js Notifications, booking chat, socket auth
-        └── room.test.js          Room access window, peer IDs, presence, whiteboard relay
+        ├── room.test.js          Room access window, peer IDs, presence, whiteboard relay
+        └── reviews.test.js       Reviews, rating average, badges, leaderboard, stats
 ```
 
 ## 4. Data model
@@ -223,7 +224,7 @@ All documents have `createdAt` / `updatedAt`.
 | timeCredits | Number | available balance, default 2, never below 0 |
 | stats.classesTaught / classesAttended | Number | incremented on completion |
 | rating / ratingCount | Number | running average of received reviews |
-| badges | [{ name, icon, dateEarned }] | |
+| badges | [{ code, name, dateEarned }] | awarded by `badgeService`: First lesson, Taught ×5/×10/×25, Learned ×5/×10, Both sides, Well rated (4.5+ from 5+ reviews) |
 | role | `user` \| `admin` | |
 | isVerified | Boolean | |
 | verificationToken / verificationExpires | String / Date | SHA-256 hash of emailed token, 24h |
@@ -275,7 +276,7 @@ Indexes: `{ learner, status }`, `{ teacher, status }`, `{ status, autoReleaseAt 
 Append-only. For every user, `sum(amount) === timeCredits` must always hold.
 
 ### Review
-`booking`, `author`, `subject`, `rating` (1–5), `comment` (max 500). Unique index on `{ booking, author }`.
+`booking`, `author`, `subject`, `role` (the author's role), `rating` (1–5), `comment` (max 500). Unique index on `{ booking, author }`. Posting one flips `reviewedByLearner` / `reviewedByTeacher` on the booking in the same transaction (that flag is the lock against double reviews) and updates the subject's running average in the database.
 
 ### Message
 `booking`, `sender`, `body` (max 1000). Used for both booking chat and in-room chat.
@@ -343,7 +344,7 @@ Base path `/api`. JSON in and out. Authenticated routes need `Authorization: Bea
 | PUT | `/me` | ✓ | Update name, bio, skills, preferred hours, timezone |
 | PUT | `/me/password` | ✓ | Change password |
 | GET | `/:id` | – | Public profile (no email) with listings and reviews |
-| GET | `/leaderboard` | – | Top 10 by classes taught, then rating |
+| GET | `/leaderboard` | – | `?sort=taught` (sessions taught) or `?sort=rated` (average rating, 3+ reviews); top 20 |
 | GET | `/matches` | ✓ | Users who teach what you want and want what you teach |
 
 ### Listings — `/api/listings`
@@ -376,7 +377,12 @@ Base path `/api`. JSON in and out. Authenticated routes need `Authorization: Bea
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | POST | `/` | ✓ participant | `{ bookingId, rating, comment }`, booking must be COMPLETED |
-| GET | `/user/:id` | – | Reviews received by a user |
+| GET | `/user/:id` | – | Reviews received by a user, newest first |
+
+### Stats — `/api/stats`
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/api/stats` | – | Landing-page numbers: members, sessions completed, hours exchanged, open listings (cached 60 s) |
 
 ### Wallet — `/api/wallet`
 | Method | Path | Auth | Purpose |

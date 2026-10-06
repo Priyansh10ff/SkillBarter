@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import { PageLoader } from "./PageLoader";
+import { Footer } from "./Footer";
 
 export const AppShell = () => (
   <>
@@ -9,10 +10,11 @@ export const AppShell = () => (
       Skip to content
     </a>
     <Navbar />
-    <main id="main" className="mx-auto max-w-page px-4 md:px-6 pt-24 pb-24">
+    <main id="main" className="mx-auto max-w-page px-4 md:px-6 pt-24 pb-24 min-h-[calc(100dvh-4rem)]">
       <Suspense fallback={<PageLoader />}>
         <Outlet />
       </Suspense>
     </main>
+    <Footer />
   </>
 );

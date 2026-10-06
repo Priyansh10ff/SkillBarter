@@ -7,62 +7,44 @@ import { useBookListing } from "../hooks/useBookListing";
 import { useDebounced } from "../hooks/useDebounced";
 import { CATEGORIES } from "../lib/constants";
 import { apiError } from "../lib/format";
-import { Button, EmptyState, Hours, Input, PageHeader, Panel, PanelHeader, Select, SkeletonRows } from "../components/ui";
+import { Button, EmptyState, Hours, Input, PageHeader, Panel, Select, SkeletonRows } from "../components/ui";
 import { ListingRow, ListingTableHead } from "../components/listings/ListingRow";
 import { BarterMatches } from "../components/listings/BarterMatches";
+import { ExchangeBoard } from "../components/landing/ExchangeBoard";
+import { CommunityStats } from "../components/landing/CommunityStats";
+import { HowItWorks } from "../components/landing/HowItWorks";
 
 const PAGE_SIZE = 20;
 
-const LEDGER_EXAMPLE = [
-  ["welcome credits", 2],
-  ["you teach react · 1 h", 1],
-  ["you learn guitar · 1 h", -1],
-  ["you learn figma · 30 min", -0.5],
-];
-
-const Intro = () => (
-  <section className="grid gap-10 md:grid-cols-[1.25fr_1fr] md:items-end border-b border-line pb-12 mb-10">
-    <div>
-      <p className="label-mono mb-5">Time bank for skills</p>
-      <h1 className="text-[44px] md:text-6xl leading-[1.02] tracking-tightest">
-        Teach an hour.
-        <br />
-        Learn an hour.
-      </h1>
-      <p className="mt-6 text-muted text-lg max-w-md">
-        Post what you know, book what you want to learn. Every hour costs one credit, whatever the subject. New members start with{" "}
-        <Hours value={2} />.
-      </p>
-      <div className="mt-8 flex flex-wrap gap-2">
-        <Button variant="primary" size="lg" to="/register">
-          Create an account
-        </Button>
-        <Button size="lg" onClick={() => document.getElementById("listings")?.scrollIntoView({ behavior: "smooth" })}>
-          Browse sessions
-        </Button>
-      </div>
-    </div>
-
-    <Panel>
-      <PanelHeader title="How the maths works" />
-      <dl className="font-mono text-sm tabular p-4 space-y-2">
-        {LEDGER_EXAMPLE.map(([label, value]) => (
-          <div key={label} className="flex justify-between gap-4">
-            <dt className="text-muted">{label}</dt>
-            <dd>
-              <Hours value={value} signed tone="sign" />
-            </dd>
-          </div>
-        ))}
-        <div className="flex justify-between gap-4 border-t border-line pt-2">
-          <dt className="text-ink">balance</dt>
-          <dd>
-            <Hours value={LEDGER_EXAMPLE.reduce((sum, [, v]) => sum + v, 0)} />
-          </dd>
+// Logged-out intro: headline + live board, real numbers, how it works
+const Intro = ({ listings }) => (
+  <>
+    <section className="grid gap-10 md:grid-cols-[1.15fr_1fr] md:items-center pb-12">
+      <div>
+        <p className="label-mono mb-5">Time bank for skills</p>
+        <h1 className="text-[44px] md:text-6xl leading-[1.02] tracking-tightest">
+          Teach an hour.
+          <br />
+          Learn an hour.
+        </h1>
+        <p className="mt-6 text-muted text-lg max-w-md">
+          Post what you know, book what you want to learn. Every hour costs one credit, whatever the subject. New members start with{" "}
+          <Hours value={2} />.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-2">
+          <Button variant="primary" size="lg" to="/register">
+            Create an account
+          </Button>
+          <Button size="lg" onClick={() => document.getElementById("listings")?.scrollIntoView({ behavior: "smooth" })}>
+            Browse sessions
+          </Button>
         </div>
-      </dl>
-    </Panel>
-  </section>
+      </div>
+      <ExchangeBoard listings={listings} />
+    </section>
+    <CommunityStats />
+    <HowItWorks />
+  </>
 );
 
 const ListingList = ({ listings, user, book, bookingId }) => (
@@ -121,6 +103,8 @@ const Home = () => {
   // results carry the key they were fetched for; a mismatch means loading
   const [results, setResults] = useState({ key: null, items: [], page: 1, totalPages: 1, total: 0 });
   const [loadingMore, setLoadingMore] = useState(false);
+  // newest open sessions for the landing board; kept while the visitor searches below
+  const [boardListings, setBoardListings] = useState(null);
 
   const params = (page) => ({ q: query || undefined, category: category === "All" ? undefined : category, page, limit: PAGE_SIZE });
 
@@ -128,7 +112,11 @@ const Home = () => {
     let alive = true;
     api
       .get("/api/listings", { params: { q: query || undefined, category: category === "All" ? undefined : category, page: 1, limit: PAGE_SIZE } })
-      .then(({ data }) => alive && setResults({ key, ...data }))
+      .then(({ data }) => {
+        if (!alive) return;
+        setResults({ key, ...data });
+        if (!query && category === "All") setBoardListings(data.items.slice(0, 10));
+      })
       .catch(() => alive && setResults({ key, items: [], page: 1, totalPages: 1, total: 0 }));
     return () => {
       alive = false;
@@ -169,7 +157,7 @@ const Home = () => {
           }
         />
       ) : (
-        <Intro />
+        <Intro listings={boardListings} />
       )}
 
       {user && !user.onboardedAt && (

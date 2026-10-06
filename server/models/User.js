@@ -24,8 +24,8 @@ const userSchema = new mongoose.Schema(
     ratingCount: { type: Number, default: 0 },
     badges: [
       {
-        name: String,
-        icon: String,
+        code: String, // stable id, e.g. taught-5
+        name: String, // shown as a stamp, e.g. "Taught ×5"
         dateEarned: { type: Date, default: Date.now },
       },
     ],

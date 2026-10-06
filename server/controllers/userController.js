@@ -45,11 +45,18 @@ const getMatches = async (req, res) => {
   res.json(await barterMatches(req.user));
 };
 
-// GET /api/users/leaderboard
+// GET /api/users/leaderboard?sort=taught|rated
+// "rated" needs at least 3 reviews so one 5-star review can't top the board
+const LEADERBOARDS = {
+  taught: { filter: { "stats.classesTaught": { $gt: 0 } }, sort: { "stats.classesTaught": -1, rating: -1, createdAt: 1 } },
+  rated: { filter: { ratingCount: { $gte: 3 } }, sort: { rating: -1, ratingCount: -1, createdAt: 1 } },
+};
+
 const getLeaderboard = async (req, res) => {
-  const users = await User.find({ isVerified: true, "stats.classesTaught": { $gt: 0 } })
-    .sort({ "stats.classesTaught": -1, rating: -1 })
-    .limit(10)
+  const board = LEADERBOARDS[req.valid.query.sort];
+  const users = await User.find({ isVerified: true, ...board.filter })
+    .sort(board.sort)
+    .limit(20)
     .select("name stats badges rating ratingCount");
   res.json(users);
 };
