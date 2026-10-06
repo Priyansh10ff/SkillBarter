@@ -28,7 +28,7 @@ const Balance = ({ className }) => {
   const { user } = useContext(AuthContext);
   const held = useHeldCredits();
   return (
-    <Link to="/profile" title="Your balance" className={cx("flex flex-col items-end leading-none px-2 py-1 rounded hover:bg-raised", className)}>
+    <Link to="/wallet" title="Your balance and credit history" className={cx("flex flex-col items-end leading-none px-2 py-1 rounded hover:bg-raised", className)}>
       <Hours value={user.timeCredits} className="text-sm" />
       {held > 0 && <span className="mt-1 font-mono text-2xs text-faint">{formatHours(held)} held</span>}
     </Link>
@@ -115,7 +115,7 @@ const Navbar = () => {
             </div>
           )}
           <ul className="py-2">
-            {[...links, ...(user ? [{ to: "/create-listing", label: "Post a skill" }, { to: "/profile", label: "Profile" }, { to: "/settings", label: "Settings" }] : [])].map((l) => (
+            {[...links, ...(user ? [{ to: "/create-listing", label: "Post a skill" }, { to: "/wallet", label: "Wallet" }, { to: "/profile", label: "Profile" }, { to: "/settings", label: "Settings" }] : [])].map((l) => (
               <li key={l.to}>
                 <NavLink
                   to={l.to}

@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { CalendarClock, Video } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { MessageSquare, Video } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../api/client";
 import AuthContext from "../context/AuthContext";
@@ -9,7 +9,9 @@ import { useSocket } from "../context/SocketContext";
 import dayjs from "../lib/date";
 import { BOOKING_STATUS as S } from "../lib/constants";
 import { apiError, formatDateTime, formatDuration } from "../lib/format";
-import { Avatar, Button, EmptyState, Hours, Input, PageHeader, Segmented, SkeletonRows, StatusTag } from "../components/ui";
+import { Avatar, Button, EmptyState, Hours, Input, PageHeader, Segmented, SkeletonRows, StatusTag, cx } from "../components/ui";
+import { BookingTrack } from "../components/bookings/BookingTrack";
+import { BookingChat } from "../components/bookings/BookingChat";
 
 const FILTERS = [
   { value: "ALL", label: "All" },
@@ -17,8 +19,9 @@ const FILTERS = [
   { value: "TEACHING", label: "Teaching" },
 ];
 
-const BookingCard = ({ booking: b, userId, onAction }) => {
+const BookingCard = ({ booking: b, userId, onAction, highlighted }) => {
   const [date, setDate] = useState("");
+  const [chatOpen, setChatOpen] = useState(highlighted);
   const learning = b.learner?._id === userId;
   const other = learning ? b.teacher : b.learner;
   const myProposal = b.proposal?.by === userId;
@@ -26,7 +29,7 @@ const BookingCard = ({ booking: b, userId, onAction }) => {
   const canCancel = b.status === S.PENDING || (b.status === S.SCHEDULED && !started);
 
   return (
-    <li className="p-4 md:p-5 space-y-4">
+    <li id={b._id} className={cx("p-4 md:p-5 space-y-4 scroll-mt-24 transition-colors", highlighted && "bg-raised/60")}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <Avatar name={other?.name} />
@@ -48,6 +51,8 @@ const BookingCard = ({ booking: b, userId, onAction }) => {
           </span>
         </div>
       </div>
+
+      <BookingTrack booking={b} />
 
       {b.status === S.PENDING && (
         <div className="border border-line rounded bg-bg p-3 space-y-3">
@@ -84,12 +89,6 @@ const BookingCard = ({ booking: b, userId, onAction }) => {
         </div>
       )}
 
-      {b.scheduledAt && b.status !== S.CANCELLED && (
-        <p className="flex items-center gap-2 text-sm">
-          <CalendarClock size={14} className="text-muted" />
-          <span className="font-mono">{formatDateTime(b.scheduledAt)}</span>
-        </p>
-      )}
       {b.status === S.DISPUTED && <p className="text-sm text-bad">Reported: {b.dispute?.reason}. Credits are frozen until it's reviewed.</p>}
       {b.status === S.CANCELLED && b.cancelReason && <p className="text-sm text-muted">Reason: {b.cancelReason}</p>}
 
@@ -109,12 +108,17 @@ const BookingCard = ({ booking: b, userId, onAction }) => {
             </Button>
           </>
         )}
+        <Button size="sm" variant="ghost" onClick={() => setChatOpen((o) => !o)} aria-expanded={chatOpen}>
+          <MessageSquare size={14} /> {chatOpen ? "Hide messages" : "Messages"}
+        </Button>
         {canCancel && (
           <Button size="sm" variant="ghost" onClick={() => onAction(b._id, "cancel", {}, "Booking cancelled", { kind: "cancel", learning })}>
             {b.status === S.PENDING && !learning ? "Decline" : "Cancel"}
           </Button>
         )}
       </div>
+
+      {chatOpen && <BookingChat bookingId={b._id} userId={userId} />}
     </li>
   );
 };
@@ -125,6 +129,8 @@ const Bookings = () => {
   const confirm = useConfirm();
   const [bookings, setBookings] = useState(null);
   const [filter, setFilter] = useState("ALL");
+  const { hash } = useLocation();
+  const target = hash.slice(1); // /bookings#<id> from notifications and the wallet
 
   const load = useCallback(async () => {
     try {
@@ -191,6 +197,11 @@ const Bookings = () => {
     }
   };
 
+  // bring a linked booking into view once the list is there
+  useEffect(() => {
+    if (bookings && target) document.getElementById(target)?.scrollIntoView({ block: "start" });
+  }, [bookings, target]);
+
   const visible = (bookings || []).filter((b) => {
     const learning = b.learner?._id === user?._id;
     if (filter === "LEARNING") return learning;
@@ -219,7 +230,7 @@ const Bookings = () => {
       ) : (
         <ul className="border border-line rounded divide-y divide-line">
           {visible.map((b) => (
-            <BookingCard key={b._id} booking={b} userId={user?._id} onAction={onAction} />
+            <BookingCard key={b._id} booking={b} userId={user?._id} onAction={onAction} highlighted={b._id === target} />
           ))}
         </ul>
       )}

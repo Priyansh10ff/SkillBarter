@@ -16,5 +16,7 @@ router.post("/:id/accept", validate({ params: idParam }), c.accept);
 router.post("/:id/cancel", validate({ params: idParam, body: v.cancel }), c.cancel);
 router.post("/:id/complete", validate({ params: idParam }), c.complete);
 router.post("/:id/dispute", validate({ params: idParam, body: v.dispute }), c.dispute);
+router.get("/:id/messages", validate({ params: idParam }), c.listMessages);
+router.post("/:id/messages", validate({ params: idParam, body: v.message }), c.postMessage);
 
 module.exports = router;

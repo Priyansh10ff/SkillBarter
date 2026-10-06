@@ -1,69 +1,59 @@
-import React, { createContext, useState, useContext, useCallback } from 'react';
-import toast from 'react-hot-toast';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import api from "../api/client";
+import { AuthContext } from "./AuthContext";
+import { useSocket } from "./SocketContext";
 
-const NotificationContext = createContext();
+const NotificationContext = createContext(null);
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useNotification = () => useContext(NotificationContext);
 
+// Notifications live on the server; new ones arrive over the socket.
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const { user } = useContext(AuthContext);
+  const { socket } = useSocket();
+  const [state, setState] = useState({ items: [], unread: 0 });
+  const userId = user?._id;
 
-  const addNotification = useCallback((message, type = 'success') => {
-    // trigger toast
-    if (type === 'error') {
-      toast.error(message);
-    } else if (type === 'success') {
-      toast.success(message);
-    } else {
-      toast(message);
-    }
-
-    // add to history
-    const newNotification = {
-      id: Date.now() + Math.random().toString(36).substr(2, 9),
-      message,
-      type,
-      timestamp: new Date(),
-      read: false,
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    api
+      .get("/api/notifications")
+      .then(({ data }) => alive && setState(data))
+      .catch(() => {});
+    return () => {
+      alive = false;
+      setState({ items: [], unread: 0 });
     };
+  }, [userId]);
 
-    setNotifications((prev) => [newNotification, ...prev]);
+  useEffect(() => {
+    if (!socket) return;
+    const onNotification = (n) => {
+      setState((s) => ({ items: [n, ...s.items].slice(0, 30), unread: s.unread + 1 }));
+      toast(n.message, { duration: 5000 });
+    };
+    socket.on("notification", onNotification);
+    return () => socket.off("notification", onNotification);
+  }, [socket]);
+
+  const markRead = useCallback(async (id) => {
+    setState((s) => ({
+      items: s.items.map((n) => (n._id === id ? { ...n, read: true } : n)),
+      unread: Math.max(0, s.unread - (s.items.find((n) => n._id === id && !n.read) ? 1 : 0)),
+    }));
+    await api.put(`/api/notifications/${id}/read`).catch(() => {});
   }, []);
 
-  const markAsRead = (id) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
-  const clearNotifications = () => {
-    setNotifications([]);
-  };
-
-  const toggleNotificationCenter = () => setIsOpen(!isOpen);
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const markAllRead = useCallback(async () => {
+    setState((s) => ({ items: s.items.map((n) => ({ ...n, read: true })), unread: 0 }));
+    await api.put("/api/notifications/read-all").catch(() => {});
+  }, []);
 
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-        clearNotifications,
-        unreadCount,
-        isOpen,
-        toggleNotificationCenter,
-        setIsOpen
-      }}
-    >
+    <NotificationContext.Provider value={{ notifications: state.items, unreadCount: state.unread, markRead, markAllRead }}>
       {children}
     </NotificationContext.Provider>
   );

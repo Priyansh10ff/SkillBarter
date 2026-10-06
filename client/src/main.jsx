@@ -8,7 +8,6 @@ import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "./index.css";
 import App from "./App.jsx";
-import { NotificationProvider } from "./context/NotificationContext";
 
 const toastStyle = {
   background: "rgb(var(--surface))",
@@ -29,8 +28,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         error: { iconTheme: { primary: "rgb(var(--bad))", secondary: "rgb(var(--bg))" } },
       }}
     />
-    <NotificationProvider>
-      <App />
-    </NotificationProvider>
+    <App />
   </React.StrictMode>
 );

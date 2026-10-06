@@ -159,7 +159,7 @@ SkillBarter/
     │   ├── CreditEntry.js
     │   ├── Review.js
     │   ├── Message.js
-    │   └── Notification.js
+    │   └── Notification.js       TTL index: removed after 90 days
     ├── middleware/
     │   ├── auth.js               protect, requireAdmin
     │   ├── validate.js           zod request validation
@@ -198,8 +198,10 @@ SkillBarter/
     └── tests/
         ├── helpers.js            In-memory replica set, fixtures, ledger invariant checks
         ├── auth.test.js
-        ├── listings.test.js
-        └── bookings.test.js      Booking flow, credits, disputes, concurrency
+        ├── users.test.js         Profile, password change, public profiles
+        ├── listings.test.js      Search, paging, edits, suggestions, barter matches
+        ├── bookings.test.js      Booking flow, credits, disputes, concurrency
+        └── notifications.test.js Notifications, booking chat, socket auth and rooms
 ```
 
 ## 4. Data model
@@ -378,7 +380,7 @@ Base path `/api`. JSON in and out. Authenticated routes need `Authorization: Bea
 ### Wallet — `/api/wallet`
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/` | ✓ | Balance, credits currently held in your bookings, ledger history (paginated) |
+| GET | `/` | ✓ | Balance, credits held in open bookings, ledger entries (paginated) and `history`: the last 100 movements for the balance chart |
 
 ### Notifications — `/api/notifications`
 | Method | Path | Auth | Purpose |

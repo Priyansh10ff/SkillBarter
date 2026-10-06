@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-d
 import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
 import { ConfirmProvider } from "./context/ConfirmContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import { AppShell } from "./components/layout/AppShell";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { PageLoader } from "./components/layout/PageLoader";
@@ -23,6 +24,7 @@ const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const Bookings = lazy(() => import("./pages/Bookings"));
 const Room = lazy(() => import("./pages/Room"));
 const Profile = lazy(() => import("./pages/Profile"));
+const Wallet = lazy(() => import("./pages/Wallet"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const StyleGuide = import.meta.env.DEV ? lazy(() => import("./pages/StyleGuide")) : null;
@@ -30,6 +32,7 @@ const StyleGuide = import.meta.env.DEV ? lazy(() => import("./pages/StyleGuide")
 const App = () => (
   <AuthProvider>
     <SocketProvider>
+      <NotificationProvider>
       <ConfirmProvider>
         <Router>
           <Routes>
@@ -49,6 +52,7 @@ const App = () => (
                 <Route path="/bookings" element={<Bookings />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/wallet" element={<Wallet />} />
                 <Route path="/welcome" element={<Welcome />} />
               </Route>
               <Route path="/my-transactions" element={<Navigate to="/bookings" replace />} />
@@ -70,6 +74,7 @@ const App = () => (
           </Routes>
         </Router>
       </ConfirmProvider>
+      </NotificationProvider>
     </SocketProvider>
   </AuthProvider>
 );

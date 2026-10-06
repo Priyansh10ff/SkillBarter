@@ -3,11 +3,8 @@ const env = require("../config/env");
 const User = require("../models/User");
 const AppError = require("../utils/AppError");
 
-// Requires a valid "Authorization: Bearer <token>" header and loads req.user.
-const protect = async (req, res, next) => {
-  const [scheme, token] = (req.headers.authorization || "").split(" ");
-  if (scheme !== "Bearer" || !token) throw new AppError(401, "Not authorized, no token");
-
+// Verifies a JWT and loads its user. Shared by HTTP requests and socket connections.
+const userFromToken = async (token) => {
   let decoded;
   try {
     decoded = jwt.verify(token, env.JWT_SECRET);
@@ -20,8 +17,14 @@ const protect = async (req, res, next) => {
   if (user.passwordChangedAt && decoded.iat * 1000 < user.passwordChangedAt.getTime()) {
     throw new AppError(401, "Your password changed. Log in again.");
   }
+  return user;
+};
 
-  req.user = user;
+// Requires a valid "Authorization: Bearer <token>" header and loads req.user.
+const protect = async (req, res, next) => {
+  const [scheme, token] = (req.headers.authorization || "").split(" ");
+  if (scheme !== "Bearer" || !token) throw new AppError(401, "Not authorized, no token");
+  req.user = await userFromToken(token);
   next();
 };
 
@@ -30,4 +33,4 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { protect, requireAdmin };
+module.exports = { protect, requireAdmin, userFromToken };

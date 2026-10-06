@@ -34,6 +34,7 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/listings", require("./routes/listingRoutes"));
 app.use("/api/bookings", require("./routes/bookingRoutes"));
 app.use("/api/wallet", require("./routes/walletRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 
 // ===== ERRORS =====

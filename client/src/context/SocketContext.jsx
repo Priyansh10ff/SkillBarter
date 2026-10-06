@@ -1,48 +1,34 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { io } from 'socket.io-client';
-import { AuthContext } from './AuthContext';
-import { useNotification } from './NotificationContext';
-import { SOCKET_URL } from '../lib/config';
-import { formatHours } from '../lib/format';
+import { createContext, useContext, useEffect, useState } from "react";
+import { io } from "socket.io-client";
+import { AuthContext } from "./AuthContext";
+import { TOKEN_KEY } from "../api/client";
+import { SOCKET_URL } from "../lib/config";
 
-const SocketContext = createContext();
+const SocketContext = createContext({ socket: null });
 
-export const useSocket = () => {
-  return useContext(SocketContext);
-};
+export const useSocket = () => useContext(SocketContext);
 
+// One authenticated socket per logged-in user. Reconnects only when the user changes.
 export const SocketProvider = ({ children }) => {
+  const { user, refreshUser } = useContext(AuthContext);
   const [socket, setSocket] = useState(null);
-  const { user, refreshUser } = useContext(AuthContext); 
-  const { addNotification } = useNotification();
-
+  const userId = user?._id;
 
   useEffect(() => {
-    // Only connect if user is authenticated
-    if (user && user._id) {
-      const newSocket = io(SOCKET_URL, {
-        query: { userId: user._id },
-        transports: ['websocket'] // Optional: Forces websocket for better performance
-      });
-
-      newSocket.on("credit_update", (newCredits) => {
-        refreshUser();
-        addNotification(`Balance updated: ${formatHours(newCredits)}`, 'success');
-      });
-
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSocket(newSocket);
-
-      return () => newSocket.close();
-    } else {
+    if (!userId) return;
+    const s = io(SOCKET_URL, {
+      auth: (cb) => cb({ token: localStorage.getItem(TOKEN_KEY) }), // read fresh on every (re)connect
+      transports: ["websocket"],
+    });
+    s.on("credits:update", () => refreshUser());
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the socket is an external system
+    setSocket(s);
+    return () => {
+      s.close();
       setSocket(null);
-    }
-  }, [user, refreshUser, addNotification]);
+    };
+  }, [userId, refreshUser]);
 
-  return (
-    <SocketContext.Provider value={{ socket }}>
-      {children}
-    </SocketContext.Provider>
-  );
+  return <SocketContext.Provider value={{ socket }}>{children}</SocketContext.Provider>;
 };

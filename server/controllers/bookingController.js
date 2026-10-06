@@ -36,4 +36,12 @@ const dispute = async (req, res) => {
   res.json(await bookingService.dispute({ bookingId: req.valid.params.id, userId: userId(req), reason: req.valid.body.reason }));
 };
 
-module.exports = { create, list, getOne, propose, accept, cancel, complete, dispute };
+const listMessages = async (req, res) => {
+  res.json(await bookingService.listMessages({ bookingId: req.valid.params.id, userId: userId(req) }));
+};
+
+const postMessage = async (req, res) => {
+  res.status(201).json(await bookingService.postMessage({ bookingId: req.valid.params.id, userId: userId(req), body: req.valid.body.body }));
+};
+
+module.exports = { create, list, getOne, propose, accept, cancel, complete, dispute, listMessages, postMessage };

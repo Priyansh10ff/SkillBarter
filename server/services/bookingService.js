@@ -13,6 +13,8 @@ const AppError = require("../utils/AppError");
 const { runInTransaction, applyCredit } = require("./creditService");
 const { checkMilestones } = require("./badgeService");
 const { emitToUser } = require("./realtime");
+const events = require("./bookingEvents");
+const Message = require("../models/Message");
 const {
   BOOKING_STATUS: S,
   CREDIT_TYPES,
@@ -60,7 +62,7 @@ const notifyChange = (booking) => {
   emitToUser(booking.teacher, "booking:update", { bookingId: String(booking._id), status: booking.status });
 };
 
-const notifyBalance = (user) => emitToUser(user._id, "credit_update", user.timeCredits);
+const notifyBalance = (user) => emitToUser(user._id, "credits:update", { timeCredits: user.timeCredits });
 
 // Loads a booking the user takes part in. Non-participants get 404, not 403,
 // so booking ids can't be probed.
@@ -112,6 +114,7 @@ const create = async ({ learner, listingId, proposedDate }) => {
 
   notifyBalance(updatedLearner);
   notifyChange(booking);
+  await events.created(booking);
   return populate(Booking.findById(booking._id));
 };
 
@@ -120,6 +123,7 @@ const propose = async ({ bookingId, userId, date }) => {
   assertProposableDate(date);
   const booking = await transition(bookingId, [S.PENDING], { proposal: { date, by: userId } });
   notifyChange(booking);
+  await events.proposed(booking, userId);
   return populate(Booking.findById(bookingId));
 };
 
@@ -143,6 +147,7 @@ const accept = async ({ bookingId, userId }) => {
     { "proposal.date": scheduledAt, "proposal.by": current.proposal.by }
   );
   notifyChange(booking);
+  await events.scheduled(booking, userId);
   return populate(Booking.findById(bookingId));
 };
 
@@ -173,6 +178,7 @@ const cancel = async ({ bookingId, userId, reason }) => {
 
   notifyBalance(learner);
   notifyChange(booking);
+  await events.cancelled(booking, userId);
   return populate(Booking.findById(bookingId));
 };
 
@@ -203,7 +209,8 @@ const complete = async ({ bookingId, userId }) => {
   if (current.status !== S.SCHEDULED) throw new AppError(400, "Only scheduled sessions can be confirmed");
   if (current.scheduledAt > new Date()) throw new AppError(400, "You can confirm once the session has started");
 
-  await releaseToTeacher(bookingId, [S.SCHEDULED], { scheduledAt: { $lte: new Date() } });
+  const booking = await releaseToTeacher(bookingId, [S.SCHEDULED], { scheduledAt: { $lte: new Date() } });
+  await events.completed(booking);
   return populate(Booking.findById(bookingId));
 };
 
@@ -224,6 +231,7 @@ const dispute = async ({ bookingId, userId, reason }) => {
     { scheduledAt: { $lte: now }, autoReleaseAt: { $gt: now } }
   );
   notifyChange(booking);
+  await events.disputed(booking);
   return populate(Booking.findById(bookingId));
 };
 
@@ -231,7 +239,8 @@ const resolveDispute = async ({ bookingId, outcome }) => {
   const resolved = { "dispute.resolvedAt": new Date(), "dispute.outcome": outcome };
 
   if (outcome === "release") {
-    await releaseToTeacher(bookingId, [S.DISPUTED], {}, resolved);
+    const booking = await releaseToTeacher(bookingId, [S.DISPUTED], {}, resolved);
+    await events.resolved(booking, outcome);
   } else {
     let booking;
     let learner;
@@ -244,6 +253,7 @@ const resolveDispute = async ({ bookingId, outcome }) => {
     });
     notifyBalance(learner);
     notifyChange(booking);
+    await events.resolved(booking, outcome);
   }
   return populate(Booking.findById(bookingId));
 };
@@ -259,8 +269,9 @@ const autoReleaseDue = async ({ userId } = {}) => {
   let released = 0;
   for (const { _id } of due) {
     try {
-      await releaseToTeacher(_id, [S.SCHEDULED], { autoReleaseAt: { $lte: new Date() } });
+      const booking = await releaseToTeacher(_id, [S.SCHEDULED], { autoReleaseAt: { $lte: new Date() } });
       released += 1;
+      await events.completed(booking, { auto: true });
     } catch (error) {
       if (error.statusCode !== 409) console.error(`Auto-release failed for booking ${_id}:`, error);
     }
@@ -280,6 +291,23 @@ const listForUser = async ({ userId, role, status }) => {
   return populate(Booking.find(filter).sort({ createdAt: -1 }));
 };
 
+// ===== Booking chat =====
+
+const listMessages = async ({ bookingId, userId }) => {
+  await getForParticipant(bookingId, userId);
+  return Message.find({ booking: bookingId }).sort({ createdAt: 1 }).limit(500).populate("sender", "name");
+};
+
+const postMessage = async ({ bookingId, userId, body }) => {
+  const booking = await getForParticipant(bookingId, userId);
+  const created = await Message.create({ booking: bookingId, sender: userId, body });
+  const message = await created.populate("sender", "name");
+  // both sides, so the sender's other tabs update too
+  emitToUser(booking.learner, "message:new", message);
+  emitToUser(booking.teacher, "message:new", message);
+  return message;
+};
+
 const listDisputes = () => populate(Booking.find({ status: S.DISPUTED }).sort({ "dispute.openedAt": 1 }));
 
 module.exports = {
@@ -294,4 +322,6 @@ module.exports = {
   listForUser,
   listDisputes,
   getById,
+  listMessages,
+  postMessage,
 };

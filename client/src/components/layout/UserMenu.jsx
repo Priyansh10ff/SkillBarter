@@ -38,6 +38,9 @@ export const UserMenu = () => {
           <Link to="/bookings" onClick={close} className="block px-3 py-2 text-sm text-muted hover:text-ink hover:bg-raised">
             Bookings
           </Link>
+          <Link to="/wallet" onClick={close} className="block px-3 py-2 text-sm text-muted hover:text-ink hover:bg-raised">
+            Wallet
+          </Link>
           <Link to="/settings" onClick={close} className="block px-3 py-2 text-sm text-muted hover:text-ink hover:bg-raised">
             Settings
           </Link>

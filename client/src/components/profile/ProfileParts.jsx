@@ -9,9 +9,10 @@ export const Stat = ({ label, children }) => (
   </div>
 );
 
-export const StatStrip = ({ children }) => (
-  <Panel className="grid grid-cols-2 md:grid-cols-4 gap-px bg-line overflow-hidden">{children}</Panel>
-);
+const COLS = { 3: "grid-cols-1 sm:grid-cols-3", 4: "grid-cols-2 md:grid-cols-4" };
+
+// gap-px on a line-coloured panel draws the dividers between stats
+export const StatStrip = ({ children, cols = 4 }) => <Panel className={`grid ${COLS[cols]} gap-px bg-line overflow-hidden`}>{children}</Panel>;
 
 export const SkillsPanel = ({ offered, requested, emptyText = "Nothing added yet." }) => (
   <Panel>
