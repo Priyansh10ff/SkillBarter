@@ -2,9 +2,6 @@ const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const Listing = require('../models/Listing');
 
-// ... keep createTransaction and getMyTransactions ...
-// (I will provide the FULL file below to ensure you have the new functions)
-
 const createTransaction = async (req, res) => {
   const { listingId } = req.body;
   
@@ -133,7 +130,7 @@ const completeTransaction = async (req, res) => {
   }
 };
 
-// NEW: Schedule Appointment
+// Propose or accept a session time
 const updateSchedule = async (req, res) => {
   const { date, action } = req.body; // action: 'PROPOSE' or 'ACCEPT'
   try {
@@ -159,5 +156,5 @@ module.exports = {
   createTransaction,
   getMyTransactions,
   completeTransaction,
-  updateSchedule // Export this
+  updateSchedule,
 };

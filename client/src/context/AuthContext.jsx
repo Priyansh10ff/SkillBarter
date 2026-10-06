@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import api, { TOKEN_KEY } from "../api/client";
 
 export const AuthContext = createContext();
 
@@ -8,21 +8,16 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is already logged in (on page refresh)
+  // Restore the session on page load
   useEffect(() => {
     const checkUserLoggedIn = async () => {
-      const token = localStorage.getItem("token");
-      if (token) {
+      if (localStorage.getItem(TOKEN_KEY)) {
         try {
-          const config = {
-            headers: { Authorization: `Bearer ${token}` },
-          };
-          // FIX 1: Removed http://localhost:5000 (handled by App.jsx)
-          const { data } = await axios.get("/api/users/me", config);
+          const { data } = await api.get("/api/users/me");
           setUser(data);
         } catch (error) {
           console.error(error);
-          localStorage.removeItem("token");
+          localStorage.removeItem(TOKEN_KEY);
         }
       }
       setLoading(false);
@@ -30,57 +25,36 @@ export const AuthProvider = ({ children }) => {
     checkUserLoggedIn();
   }, []);
 
-  // Login Function
   const login = useCallback(async (email, password) => {
-    try {
-      // FIX 2: Removed http://localhost:5000
-      const { data } = await axios.post("/api/users/login", { email, password });
-      localStorage.setItem("token", data.token);
-      setUser(data);
-      return { success: true, data };
-    } catch (error) {
-      console.error("Login failed:", error);
-      throw error;
-    }
+    const { data } = await api.post("/api/users/login", { email, password });
+    localStorage.setItem(TOKEN_KEY, data.token);
+    setUser(data);
+    return { success: true, data };
   }, []);
 
-  // Register Function
   const register = useCallback(async (name, email, password, skills) => {
-    try {
-      // FIX 3: Removed http://localhost:5000
-      const { data } = await axios.post("/api/users", { name, email, password, skills });
-      
-      // If the backend returns a token, log the user in (legacy behavior or if verification is off)
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        setUser(data);
-      }
-      
-      return { success: true, data };
-    } catch (error) {
-      console.error("Registration failed:", error);
-      throw error;
+    const { data } = await api.post("/api/users", { name, email, password, skills });
+    // Registration returns a token only when email verification is disabled
+    if (data.token) {
+      localStorage.setItem(TOKEN_KEY, data.token);
+      setUser(data);
     }
+    return { success: true, data };
   }, []);
 
-  // Logout Function
   const logout = useCallback(() => {
-    localStorage.removeItem("token");
+    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
   }, []);
 
-  // Refresh User Data (To update Wallet Balance after a transaction)
+  // Re-fetch the user (e.g. after a credit change)
   const refreshUser = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-        // FIX 4: Removed http://localhost:5000
-        const { data } = await axios.get("/api/users/me", config);
-        setUser(data);
-      } catch (error) {
-        console.error("Failed to refresh user:", error);
-      }
+    if (!localStorage.getItem(TOKEN_KEY)) return;
+    try {
+      const { data } = await api.get("/api/users/me");
+      setUser(data);
+    } catch (error) {
+      console.error("Failed to refresh user:", error);
     }
   }, []);
 

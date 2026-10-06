@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
-// eslint-disable-next-line react-refresh/only-export-components
 const NotificationContext = createContext();
 
 // eslint-disable-next-line react-refresh/only-export-components

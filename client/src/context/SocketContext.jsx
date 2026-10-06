@@ -3,6 +3,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 import { useNotification } from './NotificationContext';
+import { SOCKET_URL } from '../lib/config';
 
 const SocketContext = createContext();
 
@@ -15,16 +16,11 @@ export const SocketProvider = ({ children }) => {
   const { user, refreshUser } = useContext(AuthContext); 
   const { addNotification } = useNotification();
 
-  // Define the server URL: Use the Env Variable if available, otherwise localhost
-  // Use the live URL as the default fallback so it works immediately on deployment
-  const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'https://skillbarter-yew1.onrender.com';
 
   useEffect(() => {
     // Only connect if user is authenticated
     if (user && user._id) {
-      console.log("Connecting to socket at:", SERVER_URL); // Debugging log
-
-      const newSocket = io(SERVER_URL, {
+      const newSocket = io(SOCKET_URL, {
         query: { userId: user._id },
         transports: ['websocket'] // Optional: Forces websocket for better performance
       });
@@ -34,13 +30,14 @@ export const SocketProvider = ({ children }) => {
         addNotification(`Credits updated! Balance: ${newCredits} CR`, 'success');
       });
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSocket(newSocket);
 
       return () => newSocket.close();
     } else {
       setSocket(null);
     }
-  }, [user, SERVER_URL, refreshUser, addNotification]);
+  }, [user, refreshUser, addNotification]);
 
   return (
     <SocketContext.Provider value={{ socket }}>

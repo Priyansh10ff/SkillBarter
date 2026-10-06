@@ -1,22 +1,16 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import { SocketProvider } from "./context/SocketContext"; 
-import Navbar from "./components/Navbar";
-import Login from "./components/Login";
-import Register from "./components/Register";
-import CreateListing from "./components/CreateListing";
-import Home from "./components/Home";
-import Transactions from "./components/Transactions";
-import VideoRoom from "./components/VideoRoom";
-import Profile from "./components/Profile";
-import Leaderboard from "./components/Leaderboard";
-import VerifyEmail from "./components/VerifyEmail";
-import axios from "axios"; // 1. Import Axios
-
-// 2. Set the Global Base URL for API calls
-// This tells axios to use your Render URL in production, but localhost on your PC
-// axios.defaults.baseURL = import.meta.env.VITE_API_URL || "https://skillbarter-yew1.onrender.com";
-axios.defaults.withCredentials = true; // Important if you use cookies/sessions
+import { SocketProvider } from "./context/SocketContext";
+import Navbar from "./components/layout/Navbar";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import VerifyEmail from "./pages/VerifyEmail";
+import CreateListing from "./pages/CreateListing";
+import Bookings from "./pages/Bookings";
+import Room from "./pages/Room";
+import Profile from "./pages/Profile";
+import Leaderboard from "./pages/Leaderboard";
 
 const App = () => {
   return (
@@ -31,8 +25,8 @@ const App = () => {
               <Route path="/register" element={<Register />} />
               <Route path="/verify-email/:token" element={<VerifyEmail />} />
               <Route path="/create-listing" element={<CreateListing />} />
-              <Route path="/my-transactions" element={<Transactions />} />
-              <Route path="/room/:id" element={<VideoRoom />} />
+              <Route path="/my-transactions" element={<Bookings />} />
+              <Route path="/room/:id" element={<Room />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
             </Routes>
@@ -41,6 +35,6 @@ const App = () => {
       </SocketProvider>
     </AuthProvider>
   );
-}
+};
 
 export default App;
