@@ -64,7 +64,7 @@ const Room = () => {
 
             // Socket Logic for Ringing (Visual only since PeerJS handles stream)
             socket.on("call_user", () => {
-               toast("Incoming Call!", { icon: '📞' });
+               toast("The other person is calling");
             });
 
             // Whiteboard Sync
@@ -137,25 +137,25 @@ const Room = () => {
    const stopDrawing = () => canvasRef.current.isDrawing = false;
 
    return (
-      <div className="h-screen bg-black overflow-hidden relative font-mono text-white">
+      <div className="h-screen bg-bg overflow-hidden relative text-ink">
          {/* HUD HEADER */}
-         <div className="absolute top-0 w-full p-4 flex justify-between bg-black/60 backdrop-blur z-20">
-            <div className="flex items-center gap-4">
-               <span className={`w-3 h-3 rounded-full ${callStatus === 'IN_CALL' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-               <span className="text-xs font-bold tracking-widest">{status}</span>
+         <div className="absolute top-0 inset-x-0 h-12 px-4 flex items-center justify-between bg-bg border-b border-line z-20">
+            <div className="flex items-center gap-3">
+               <span className={`w-2 h-2 rounded-full ${callStatus === 'IN_CALL' ? 'bg-ok' : 'bg-faint'}`}></span>
+               <span className="label-mono">{status}</span>
             </div>
-            <button onClick={startCall} className="bg-green-600 px-4 py-1 rounded text-xs font-bold">CALL PARTNER</button>
+            <button onClick={startCall} className="h-8 px-3 rounded bg-accent text-accent-ink text-sm font-medium">Call</button>
          </div>
 
          {/* VIDEO GRID */}
-         <div className="flex h-full">
+         <div className="flex h-full pt-12">
             <div className={`flex-1 relative ${whiteboardOpen ? 'w-1/2' : 'w-full'} transition-all`}>
-               <video ref={remoteVideoRef} autoPlay className="w-full h-full object-cover" />
-               <div className="absolute bottom-4 left-4 bg-black/50 px-2 rounded text-xs">REMOTE</div>
+               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover bg-black" />
+               <div className="absolute bottom-24 left-4 bg-bg/80 px-2 py-1 rounded-sm label-mono">Them</div>
             </div>
 
             {whiteboardOpen && (
-               <div className="flex-1 bg-gray-900 border-l border-gray-700 relative cursor-crosshair">
+               <div className="flex-1 bg-surface border-l border-line relative cursor-crosshair">
                   <canvas
                      ref={canvasRef}
                      width={800} height={600}
@@ -164,23 +164,23 @@ const Room = () => {
                      onMouseMove={draw}
                      onMouseUp={stopDrawing}
                   />
-                  <div className="absolute top-4 left-4 text-xs text-gray-500">WHITEBOARD ACTIVE</div>
+                  <div className="absolute top-3 left-3 label-mono">Whiteboard</div>
                </div>
             )}
          </div>
 
          {/* PIP */}
-         <div className="absolute top-20 right-4 w-48 h-32 bg-gray-800 border border-gray-600 rounded-lg overflow-hidden shadow-2xl z-30">
-            <video ref={myVideoRef} autoPlay muted className="w-full h-full object-cover" />
+         <div className="absolute top-16 right-4 w-44 aspect-video bg-black border border-line rounded overflow-hidden z-30">
+            <video ref={myVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
          </div>
 
          {/* CONTROLS */}
-         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 z-40">
-            <button onClick={() => setMicOn(!micOn)} className={`p-4 rounded-full backdrop-blur-md border ${micOn ? 'bg-white/10' : 'bg-red-500 text-white'}`}>{micOn ? <Mic /> : <MicOff />}</button>
-            <button onClick={() => setCamOn(!camOn)} className={`p-4 rounded-full backdrop-blur-md border ${camOn ? 'bg-white/10' : 'bg-red-500 text-white'}`}>{camOn ? <Video /> : <VideoOff />}</button>
-            <button onClick={shareScreen} className="p-4 rounded-full bg-indigo-600/80 backdrop-blur-md"><Monitor /></button>
-            <button onClick={() => setWhiteboardOpen(!whiteboardOpen)} className={`p-4 rounded-full backdrop-blur-md ${whiteboardOpen ? 'bg-indigo-500' : 'bg-white/10'}`}><Edit3 /></button>
-            <button onClick={() => window.close()} className="p-4 rounded-full bg-red-600 hover:bg-red-700"><PhoneOff /></button>
+         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 p-1.5 bg-surface border border-line rounded z-40">
+            <button onClick={() => setMicOn(!micOn)} aria-label={micOn ? 'Mute' : 'Unmute'} className={`h-11 w-11 flex items-center justify-center rounded ${micOn ? 'hover:bg-raised' : 'bg-bad/20 text-bad'}`}>{micOn ? <Mic size={18} /> : <MicOff size={18} />}</button>
+            <button onClick={() => setCamOn(!camOn)} aria-label={camOn ? 'Camera off' : 'Camera on'} className={`h-11 w-11 flex items-center justify-center rounded ${camOn ? 'hover:bg-raised' : 'bg-bad/20 text-bad'}`}>{camOn ? <Video size={18} /> : <VideoOff size={18} />}</button>
+            <button onClick={shareScreen} aria-label="Share screen" className="h-11 w-11 flex items-center justify-center rounded hover:bg-raised"><Monitor size={18} /></button>
+            <button onClick={() => setWhiteboardOpen(!whiteboardOpen)} aria-label='Whiteboard' aria-pressed={whiteboardOpen} className={`h-11 w-11 flex items-center justify-center rounded ${whiteboardOpen ? 'bg-raised text-ink' : 'hover:bg-raised'}`}><Edit3 size={18} /></button>
+            <button onClick={() => window.close()} aria-label="Leave" className="h-11 px-4 flex items-center gap-2 rounded bg-bad text-bg text-sm font-medium"><PhoneOff size={16} /> Leave</button>
          </div>
       </div>
    );

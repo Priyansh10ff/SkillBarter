@@ -1,87 +1,91 @@
-import { useState, useContext } from "react";
+import { useContext, useState } from "react";
+import { Link } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
-import { useNotification } from "../context/NotificationContext";
-import { useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
-import { User, Mail, Lock, Zap, ArrowRight } from "lucide-react";
+import { apiError, fieldErrors } from "../lib/format";
+import { Button, Field, Hours, Input, Panel } from "../components/ui";
+import { AuthLayout, FormError } from "../components/auth/AuthLayout";
 
 const Register = () => {
-  const [formData, setFormData] = useState({ name: "", email: "", password: "", skills: "" });
   const { register } = useContext(AuthContext);
-  const { addNotification } = useNotification();
-  const navigate = useNavigate();
+  const [form, setForm] = useState({ name: "", email: "", password: "", skills: "" });
+  const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sentTo, setSentTo] = useState(null);
 
-  const handleSubmit = async (e) => {
+  const update = (key) => (e) => setForm({ ...form, [key]: e.target.value });
+
+  const submit = async (e) => {
     e.preventDefault();
+    setErrors({});
+    setFormError("");
+    setLoading(true);
+    const skills = form.skills
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     try {
-      const skillsArray = formData.skills ? formData.skills.split(',').map(s => s.trim()).filter(s => s) : [];
-      const res = await register(formData.name, formData.email, formData.password, skillsArray);
-      
-      if (res.data.token) {
-        addNotification("Registration successful! 2 Free Credits added.", "success");
-        navigate("/");
-      } else {
-        addNotification(res.data.message || "Registration successful. Please check your email.", "success");
-        navigate("/login");
-      }
-    } catch (error) {
-      console.error("Registration Error:", error);
-      addNotification(error.response?.data?.message || error.message || "Registration Failed", "error");
+      await register(form.name, form.email, form.password, skills);
+      setSentTo(form.email);
+    } catch (err) {
+      const byField = fieldErrors(err);
+      setErrors(byField);
+      if (!Object.keys(byField).length) setFormError(apiError(err, "Couldn't create the account. Try again."));
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex bg-[#0f172a] text-white">
-      <div className="hidden lg:flex w-1/2 items-center justify-center bg-gradient-to-br from-slate-900 to-indigo-950 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
-        <div className="relative z-10 px-12">
-          <h1 className="text-5xl font-black mb-6 leading-tight">Your Skills <br />Have Value.</h1>
-          <div className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10 max-w-sm">
-            <div className="bg-yellow-500/20 p-3 rounded-lg"><Zap className="text-yellow-400" /></div>
-            <div>
-              <h3 className="font-bold">2 Free Credits</h3>
-              <p className="text-slate-400 text-sm">Given upon registration.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full max-w-md">
-          <h2 className="text-3xl font-bold mb-2">Create Account</h2>
-          <p className="text-slate-400 mb-8">Join the network today.</p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <User className="absolute left-4 top-3.5 text-slate-500" size={18} />
-              <input type="text" placeholder="Full Name" className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-12 text-white outline-none focus:border-indigo-500 transition"
-                onChange={e => setFormData({ ...formData, name: e.target.value })} required />
-            </div>
-            <div className="relative">
-              <Mail className="absolute left-4 top-3.5 text-slate-500" size={18} />
-              <input type="email" placeholder="Email" className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-12 text-white outline-none focus:border-indigo-500 transition"
-                onChange={e => setFormData({ ...formData, email: e.target.value })} required />
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-4 top-3.5 text-slate-500" size={18} />
-              <input type="password" placeholder="Password" className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-12 text-white outline-none focus:border-indigo-500 transition"
-                onChange={e => setFormData({ ...formData, password: e.target.value })} required />
-            </div>
-            <div className="relative">
-              <Zap className="absolute left-4 top-3.5 text-slate-500" size={18} />
-              <input type="text" placeholder="Skills (comma separated)" className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-12 text-white outline-none focus:border-indigo-500 transition"
-                onChange={e => setFormData({ ...formData, skills: e.target.value })} />
-            </div>
-            <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-bold mt-4 shadow-lg shadow-indigo-500/20 transition flex items-center justify-center gap-2">
-              Get Started <ArrowRight size={18} />
-            </button>
-          </form>
-          <p className="mt-6 text-center text-slate-500">
-            Member? <Link to="/login" className="text-indigo-400 font-bold hover:underline">Log In</Link>
+  if (sentTo) {
+    return (
+      <AuthLayout title="Check your email">
+        <Panel className="p-4 space-y-2">
+          <p>
+            We sent a verification link to <span className="text-ink font-medium">{sentTo}</span>.
           </p>
-        </motion.div>
-      </div>
-    </div>
+          <p className="text-sm text-muted">It expires in 24 hours. Running locally without email set up? The link is in the server terminal.</p>
+        </Panel>
+      </AuthLayout>
+    );
+  }
+
+  return (
+    <AuthLayout
+      title="Create an account"
+      description={
+        <>
+          You start with <Hours value={2} />, enough for two one-hour sessions.
+        </>
+      }
+      footer={
+        <>
+          Already have one?{" "}
+          <Link to="/login" className="text-ink underline underline-offset-4 hover:text-accent">
+            Log in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="space-y-4" noValidate>
+        <FormError>{formError}</FormError>
+        <Field label="Name" error={errors.name}>
+          {(p) => <Input {...p} autoComplete="name" value={form.name} onChange={update("name")} />}
+        </Field>
+        <Field label="Email" error={errors.email}>
+          {(p) => <Input {...p} type="email" autoComplete="email" value={form.email} onChange={update("email")} />}
+        </Field>
+        <Field label="Password" hint="At least 8 characters." error={errors.password}>
+          {(p) => <Input {...p} type="password" autoComplete="new-password" value={form.password} onChange={update("password")} />}
+        </Field>
+        <Field label="What can you teach?" hint="Optional. Separate with commas, e.g. react, guitar, spanish." error={errors.skills}>
+          {(p) => <Input {...p} value={form.skills} onChange={update("skills")} />}
+        </Field>
+        <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full">
+          Create account
+        </Button>
+      </form>
+    </AuthLayout>
   );
 };
+
 export default Register;

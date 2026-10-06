@@ -47,8 +47,8 @@ How the system is built: architecture, stack, folder structure, data model, cred
 | HTTP | Axios (single configured instance) |
 | Real-time | socket.io-client |
 | Video | PeerJS (WebRTC) |
-| Animation | Framer Motion |
-| 3D hero | @react-three/fiber, @react-three/drei, three |
+| Fonts | Instrument Sans + JetBrains Mono, self-hosted via @fontsource |
+| Dialogs | Native `<dialog>` wrapped in `ui/Dialog` and `useConfirm()` |
 | Charts | Recharts (wallet history) |
 | Dates | dayjs |
 | Icons | lucide-react |
@@ -119,12 +119,12 @@ SkillBarter/
 │       │   ├── constants.js      Categories, durations, booking statuses
 │       │   └── format.js         Credits, dates, durations
 │       ├── components/
-│       │   ├── layout/           Navbar, Footer, ProtectedRoute, NotificationBell
-│       │   ├── ui/               Button, Input, Modal, Badge, Avatar, Spinner, EmptyState
+│       │   ├── layout/           AppShell, Navbar, UserMenu, NotificationBell, ProtectedRoute
+│       │   ├── ui/               Button, Field/Input/Select/Textarea, Panel, Dialog, Hours, StatusTag, Stamp, Avatar, Segmented, EmptyState, Skeleton
 │       │   ├── listings/         ListingCard, ListingForm, ListingFilters
 │       │   ├── bookings/         BookingCard, ScheduleControls, BookingChat, ReviewForm
 │       │   ├── room/             VideoTile, CallControls, Whiteboard, RoomChat
-│       │   └── home/             Hero3D
+│       │   └── auth/             AuthLayout, FormError
 │       └── pages/
 │           ├── Home.jsx          Hero, search, listing grid, suggestions
 │           ├── ListingDetail.jsx
@@ -140,7 +140,8 @@ SkillBarter/
 │           ├── VerifyEmail.jsx
 │           ├── ForgotPassword.jsx
 │           ├── ResetPassword.jsx
-│           └── NotFound.jsx
+│           ├── NotFound.jsx
+│           └── StyleGuide.jsx    /dev/ui, development builds only
 │
 └── server/
     ├── server.js                 Bootstraps HTTP server, Express, Socket.IO, PeerServer, job

@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 import { useNotification } from './NotificationContext';
 import { SOCKET_URL } from '../lib/config';
+import { formatHours } from '../lib/format';
 
 const SocketContext = createContext();
 
@@ -27,7 +28,7 @@ export const SocketProvider = ({ children }) => {
 
       newSocket.on("credit_update", (newCredits) => {
         refreshUser();
-        addNotification(`Credits updated! Balance: ${newCredits} CR`, 'success');
+        addNotification(`Balance updated: ${formatHours(newCredits)}`, 'success');
       });
 
       // eslint-disable-next-line react-hooks/set-state-in-effect

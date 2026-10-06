@@ -37,6 +37,12 @@ export const AuthProvider = ({ children }) => {
     return { success: true, data };
   }, []);
 
+  // Used after email verification, which returns a session directly
+  const loginWithToken = useCallback((token, nextUser) => {
+    localStorage.setItem(TOKEN_KEY, token);
+    setUser(nextUser);
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
@@ -54,7 +60,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, refreshUser }}>
+    <AuthContext.Provider value={{ user, login, loginWithToken, register, logout, loading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

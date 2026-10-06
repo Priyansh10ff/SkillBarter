@@ -101,7 +101,7 @@ If a booking is declined or cancelled before the session, the held credits go ba
 
 | Layer | Choice |
 |---|---|
-| Frontend | React 19, Vite, Tailwind CSS, React Router, Framer Motion, React Three Fiber |
+| Frontend | React 19, Vite, Tailwind CSS, React Router |
 | Backend | Node.js, Express 5, Socket.IO |
 | Database | MongoDB Atlas with Mongoose |
 | Real-time video | WebRTC through PeerJS, with a self-hosted PeerServer |

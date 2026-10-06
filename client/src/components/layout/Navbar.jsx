@@ -1,144 +1,143 @@
-import { useContext } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useContext, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { ArrowLeftRight, Menu, Plus, X } from "lucide-react";
 import AuthContext from "../../context/AuthContext";
-import { useNotification } from "../../context/NotificationContext";
-import { motion, AnimatePresence } from "framer-motion"; // eslint-disable-line no-unused-vars
-import { LayoutGrid, Plus, LogOut, User, Zap, Bell, X, CheckCircle, AlertCircle, Info } from "lucide-react";
-import dayjs from "../../lib/date";
+import { useHeldCredits } from "../../hooks/useHeldCredits";
+import { formatHours } from "../../lib/format";
+import { Button, Hours, cx } from "../ui";
+import { NotificationBell } from "./NotificationBell";
+import { UserMenu } from "./UserMenu";
+
+const LINKS = [
+  { to: "/", label: "Browse", end: true },
+  { to: "/bookings", label: "Bookings", auth: true },
+  { to: "/leaderboard", label: "Leaderboard" },
+];
+
+const Wordmark = () => (
+  <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight text-ink shrink-0">
+    <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-accent text-accent-ink">
+      <ArrowLeftRight size={14} strokeWidth={2.5} />
+    </span>
+    Skill Barter
+  </Link>
+);
+
+// Balance shown as time, with credits held in open bookings underneath
+const Balance = ({ className }) => {
+  const { user } = useContext(AuthContext);
+  const held = useHeldCredits();
+  return (
+    <Link to="/profile" title="Your balance" className={cx("flex flex-col items-end leading-none px-2 py-1 rounded hover:bg-raised", className)}>
+      <Hours value={user.timeCredits} className="text-sm" />
+      {held > 0 && <span className="mt-1 font-mono text-2xs text-faint">{formatHours(held)} held</span>}
+    </Link>
+  );
+};
 
 const Navbar = () => {
-  const { user, logout } = useContext(AuthContext);
-  const { notifications, unreadCount, isOpen, toggleNotificationCenter, markAllAsRead, clearNotifications } = useNotification();
-  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [lastPath, setLastPath] = useState(location.pathname);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  // close the mobile menu on navigation
+  if (lastPath !== location.pathname) {
+    setLastPath(location.pathname);
+    setMobileOpen(false);
+  }
 
-  const getIcon = (type) => {
-    if (type === 'success') return <CheckCircle size={16} className="text-green-400" />;
-    if (type === 'error') return <AlertCircle size={16} className="text-red-400" />;
-    return <Info size={16} className="text-blue-400" />;
-  };
+  const links = LINKS.filter((l) => !l.auth || user);
 
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      className="fixed top-0 left-0 right-0 z-50 bg-[#0f172a]/80 backdrop-blur-md border-b border-white/10"
-    >
-      <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-500/20 group-hover:rotate-12 transition duration-300">
-            S
-          </div>
-          <span className="text-xl font-bold text-white tracking-tight">
-            Skill<span className="text-indigo-400">Barter</span>
-          </span>
-        </Link>
+    <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-line bg-bg">
+      <div className="mx-auto flex h-full max-w-page items-center gap-6 px-4 md:px-6">
+        <Wordmark />
 
-        <div className="hidden md:flex items-center gap-1">
+        <nav aria-label="Main" className="hidden md:flex h-full items-stretch">
+          {links.map((l) => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.end}
+              className={({ isActive }) =>
+                cx(
+                  "flex items-center px-3 text-sm border-b-2 -mb-px transition-colors",
+                  isActive ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
+                )
+              }
+            >
+              {l.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="ml-auto flex items-center gap-1.5">
           {user ? (
             <>
-              <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>
-                Marketplace
-              </Link>
-              <Link to="/my-transactions" className={`nav-link ${location.pathname === '/my-transactions' ? 'active' : ''}`}>
-                Activity
-              </Link>
-              <Link to="/leaderboard" className={`nav-link ${location.pathname === '/leaderboard' ? 'active' : ''}`}>
-                Leaderboard
-              </Link>
-              <Link to="/profile" className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
-                Profile
-              </Link>
-
-              <div className="h-6 w-px bg-white/10 mx-3"></div>
-
-              {/* Credits Display */}
-              <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full mr-2">
-                <Zap size={14} className="text-yellow-400 fill-yellow-400" />
-                <span className="text-white font-mono font-bold text-sm">{user.timeCredits} CR</span>
+              <Balance className="hidden sm:flex" />
+              <NotificationBell />
+              <Button size="sm" to="/create-listing" className="hidden md:inline-flex ml-1">
+                <Plus size={14} /> Post a skill
+              </Button>
+              <div className="hidden md:block ml-1">
+                <UserMenu />
               </div>
-
-              {/* Notification Center */}
-              <div className="relative mr-2">
-                <button 
-                  onClick={toggleNotificationCenter} 
-                  className="relative p-2 text-gray-400 hover:text-white transition rounded-full hover:bg-white/5"
-                >
-                  <Bell size={20} />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#0f172a]"></span>
-                  )}
-                </button>
-
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 top-12 w-80 bg-[#1e293b] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
-                    >
-                      <div className="flex items-center justify-between p-3 border-b border-white/10 bg-[#0f172a]/50">
-                        <h3 className="font-bold text-sm text-white">Notifications</h3>
-                        <div className="flex gap-2">
-                          <button onClick={markAllAsRead} className="text-xs text-indigo-400 hover:text-indigo-300">Mark read</button>
-                          <button onClick={clearNotifications} className="text-xs text-slate-500 hover:text-slate-400">Clear</button>
-                        </div>
-                      </div>
-                      <div className="max-h-[300px] overflow-y-auto">
-                        {notifications.length === 0 ? (
-                          <div className="p-8 text-center text-slate-500 text-sm">
-                            No notifications yet
-                          </div>
-                        ) : (
-                          notifications.map((note) => (
-                            <div key={note.id} className={`p-3 border-b border-white/5 hover:bg-white/5 transition flex gap-3 ${!note.read ? 'bg-indigo-500/10' : ''}`}>
-                              <div className="mt-1">{getIcon(note.type)}</div>
-                              <div className="flex-1">
-                                <p className="text-sm text-slate-200 leading-snug">{note.message}</p>
-                                <p className="text-xs text-slate-500 mt-1">{dayjs(note.timestamp).fromNow()}</p>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <Link to="/create-listing" className="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg transition shadow-lg shadow-indigo-600/20">
-                <Plus size={20} />
-              </Link>
-              <button onClick={handleLogout} className="text-gray-400 hover:text-white p-2 transition">
-                <LogOut size={20} />
-              </button>
             </>
           ) : (
-            <div className="flex gap-4">
-              <Link to="/login" className="text-gray-300 hover:text-white font-medium py-2">Login</Link>
-              <Link to="/register" className="bg-white text-gray-900 px-5 py-2 rounded-lg font-bold hover:bg-gray-100 transition">Get Started</Link>
+            <div className="hidden md:flex items-center gap-2">
+              <Button variant="ghost" size="sm" to="/login">
+                Log in
+              </Button>
+              <Button variant="primary" size="sm" to="/register">
+                Sign up
+              </Button>
             </div>
           )}
+          <button
+            type="button"
+            className="md:hidden flex h-9 w-9 items-center justify-center rounded text-muted hover:text-ink hover:bg-raised"
+            onClick={() => setMobileOpen((o) => !o)}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
       </div>
-      <style>{`
-        .nav-link {
-          color: #94a3b8;
-          padding: 0.5rem 1rem;
-          border-radius: 0.5rem;
-          font-weight: 500;
-          transition: all 0.2s;
-        }
-        .nav-link:hover { color: white; background: rgba(255,255,255,0.05); }
-        .nav-link.active { color: white; background: rgba(255,255,255,0.1); }
-      `}</style>
-    </motion.nav>
+
+      {mobileOpen && (
+        <nav aria-label="Mobile" className="md:hidden border-b border-line bg-bg px-4 pb-4">
+          {user && (
+            <div className="flex items-center justify-between py-3 border-b border-line">
+              <span className="label-mono">Balance</span>
+              <Balance />
+            </div>
+          )}
+          <ul className="py-2">
+            {[...links, ...(user ? [{ to: "/create-listing", label: "Post a skill" }, { to: "/profile", label: "Profile" }] : [])].map((l) => (
+              <li key={l.to}>
+                <NavLink
+                  to={l.to}
+                  end={l.end}
+                  className={({ isActive }) => cx("block py-2.5 text-[15px]", isActive ? "text-ink" : "text-muted")}
+                >
+                  {l.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+          {!user && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button to="/login">Log in</Button>
+              <Button variant="primary" to="/register">
+                Sign up
+              </Button>
+            </div>
+          )}
+        </nav>
+      )}
+    </header>
   );
 };
 

@@ -1,56 +1,101 @@
 import { useState } from "react";
-import api from "../api/client";
 import { useNavigate } from "react-router-dom";
-import { useNotification } from "../context/NotificationContext";
-import { PenTool } from "lucide-react";
+import toast from "react-hot-toast";
+import api from "../api/client";
 import { CATEGORIES, DURATIONS } from "../lib/constants";
+import { apiError, fieldErrors, formatDuration } from "../lib/format";
+import { Button, Field, Hours, Input, PageHeader, Panel, Select, Textarea } from "../components/ui";
+import { FormError } from "../components/auth/AuthLayout";
 
 const CreateListing = () => {
-  const [form, setForm] = useState({ title: "", description: "", category: "Coding", duration: 60 });
   const navigate = useNavigate();
-  const { addNotification } = useNotification();
+  const [form, setForm] = useState({ title: "", description: "", category: "Coding", duration: 60 });
+  const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const update = (key, parse = (v) => v) => (e) => setForm({ ...form, [key]: parse(e.target.value) });
+  const cost = form.duration / 60;
 
   const submit = async (e) => {
     e.preventDefault();
+    setErrors({});
+    setFormError("");
+    setSaving(true);
     try {
       await api.post("/api/listings", form);
-      addNotification("Listing created successfully!", "success");
+      toast.success("Skill posted");
       navigate("/");
     } catch (error) {
-      console.error(error);
-      addNotification(error.response?.data?.message || "Failed to create listing", "error");
+      const byField = fieldErrors(error);
+      setErrors(byField);
+      if (!Object.keys(byField).length) setFormError(apiError(error, "Couldn't post the skill"));
+      setSaving(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <div className="bg-white w-full max-w-xl p-10 rounded-3xl shadow-xl border border-slate-100">
-        <div className="flex items-center gap-3 mb-8">
-           <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><PenTool /></div>
-           <h1 className="text-2xl font-bold">Post a Skill</h1>
-        </div>
+    <>
+      <PageHeader eyebrow="Teach" title="Post a skill" description="One listing per thing you can teach. Learners book it, you agree on a time, and you earn the hours when the session is done." />
 
-        <form onSubmit={submit} className="space-y-5">
-           <input type="text" placeholder="Title (e.g. Advanced JS)" className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition"
-             onChange={e => setForm({...form, title: e.target.value})} required />
-           
-           <textarea placeholder="Description" className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition min-h-[100px]"
-             onChange={e => setForm({...form, description: e.target.value})} required />
-
-           <div className="grid grid-cols-2 gap-4">
-              <select className="p-4 bg-slate-50 rounded-xl outline-none" onChange={e => setForm({...form, category: e.target.value})}>
-                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-              </select>
-              <select value={form.duration} className="p-4 bg-slate-50 rounded-xl outline-none"
-                 onChange={e => setForm({...form, duration: Number(e.target.value)})}>
-                {DURATIONS.map(d => <option key={d} value={d}>{d} min · {d / 60} credits</option>)}
-              </select>
-           </div>
-
-           <button className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-500 transition">Publish</button>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <form onSubmit={submit} className="space-y-5 max-w-2xl" noValidate>
+          <FormError>{formError}</FormError>
+          <Field label="Title" hint="What will they be able to do after? e.g. “Build your first React component”." error={errors.title} counter={`${form.title.length}/100`}>
+            {(p) => <Input {...p} maxLength={100} value={form.title} onChange={update("title")} />}
+          </Field>
+          <Field label="Description" hint="What you'll cover, what they should know already, what to bring." error={errors.description} counter={`${form.description.length}/2000`}>
+            {(p) => <Textarea {...p} rows={6} maxLength={2000} value={form.description} onChange={update("description")} />}
+          </Field>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Category" error={errors.category}>
+              {(p) => (
+                <Select {...p} value={form.category} onChange={update("category")}>
+                  {CATEGORIES.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <Field label="Length" error={errors.duration}>
+              {(p) => (
+                <Select {...p} value={form.duration} onChange={update("duration", Number)}>
+                  {DURATIONS.map((d) => (
+                    <option key={d} value={d}>
+                      {formatDuration(d)}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button type="submit" variant="primary" loading={saving}>
+              Post skill
+            </Button>
+            <Button variant="ghost" onClick={() => navigate(-1)}>
+              Cancel
+            </Button>
+          </div>
         </form>
+
+        <Panel as="aside" className="p-4 h-fit space-y-3">
+          <p className="label-mono">Per session</p>
+          <div className="font-mono text-sm tabular space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-muted">learner pays</span>
+              <Hours value={cost} />
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted">you earn</span>
+              <Hours value={cost} signed tone="sign" />
+            </div>
+          </div>
+          <p className="text-sm text-muted">Credits are held when someone books and released to you once they confirm the session happened.</p>
+        </Panel>
       </div>
-    </div>
+    </>
   );
 };
+
 export default CreateListing;

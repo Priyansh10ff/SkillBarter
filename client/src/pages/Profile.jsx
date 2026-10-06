@@ -1,233 +1,199 @@
-import { useEffect, useState, useContext } from "react";
+import { useContext, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import api from "../api/client";
 import AuthContext from "../context/AuthContext";
-import dayjs from "../lib/date";
-import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
-import { Trash2, Calendar, Zap, Layers, Award, Clock } from "lucide-react";
-import toast from "react-hot-toast";
+import { useConfirm } from "../context/ConfirmContext";
+import { apiError, formatDate, formatDuration } from "../lib/format";
+import { Avatar, Button, EmptyState, Hours, Input, Panel, PanelHeader, SkeletonRows, Stamp } from "../components/ui";
 
-const Profile = () => {
-  const { user, refreshUser } = useContext(AuthContext); 
-  const [myListings, setMyListings] = useState([]);
-  const [preferredHours, setPreferredHours] = useState("");
-  const [isEditingHours, setIsEditingHours] = useState(false);
-  
+const Stat = ({ label, children }) => (
+  <div className="bg-surface px-4 py-3">
+    <p className="label-mono">{label}</p>
+    <p className="mt-1 font-mono text-2xl tabular text-ink">{children}</p>
+  </div>
+);
 
+const Availability = () => {
+  const { user, refreshUser } = useContext(AuthContext);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(user.preferredHours || "");
+  const [saving, setSaving] = useState(false);
 
-
-  useEffect(() => {
-    const fetchMyListings = async () => {
-      try {
-        const { data } = await api.get("/api/listings/my");
-        setMyListings(data);
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to load listings");
-      } 
-    };
-    fetchMyListings();
-  }, []);
-
-  const handleUpdateProfile = async () => {
-    if (preferredHours.length > 50) return toast.error("Preference too long (max 50 chars)");
-
+  const save = async (e) => {
+    e.preventDefault();
+    setSaving(true);
     try {
-        await api.put("/api/users/profile", { preferredHours });
-        toast.success("Profile updated!");
-        setIsEditingHours(false);
-        refreshUser(); 
+      await api.put("/api/users/profile", { preferredHours: value });
+      await refreshUser();
+      setEditing(false);
+      toast.success("Availability saved");
     } catch (error) {
-        console.error(error);
-        toast.error("Update failed");
+      toast.error(apiError(error, "Couldn't save"));
+    } finally {
+      setSaving(false);
     }
-  };
-
-  if (!user) return <div className="min-h-screen flex items-center justify-center bg-[#020617] text-white">Loading Profile...</div>;
-
-  const handleDelete = async (id) => {
-    toast((t) => (
-      <div className="flex flex-col gap-2">
-        <span className="font-bold">Delete this listing?</span>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              performDelete(id);
-              toast.dismiss(t.id);
-            }}
-            className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-          >
-            Yes, Delete
-          </button>
-          <button onClick={() => toast.dismiss(t.id)} className="bg-gray-600 text-white px-3 py-1 rounded text-sm">Cancel</button>
-        </div>
-      </div>
-    ), { duration: 5000 });
-  };
-
-  const performDelete = async (id) => {
-    try {
-      await api.delete(`/api/listings/${id}`);
-      setMyListings(myListings.filter(l => l._id !== id));
-      toast.success("Listing deleted successfully!");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to delete.");
-    }
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] pt-28 pb-20 px-6">
-      <div className="container mx-auto max-w-5xl">
-
-        {/* HERO PROFILE CARD */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative bg-[#0f172a]/80 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-12 overflow-hidden border border-white/5 shadow-2xl"
-        >
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] -mr-20 -mt-20"></div>
-
-          <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 md:gap-12">
-            <div className="relative group">
-              <div className="w-32 h-32 bg-gray-900 rounded-full flex items-center justify-center text-5xl font-black text-white border-4 border-white/10 shadow-xl">
-                {user?.name.charAt(0)}
-              </div>
+    <Panel>
+      <PanelHeader
+        title="Usually free"
+        action={
+          !editing && (
+            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+          )
+        }
+      />
+      <div className="p-4">
+        {editing ? (
+          <form onSubmit={save} className="flex flex-col gap-2 sm:flex-row">
+            <Input aria-label="Usually free" autoFocus maxLength={100} value={value} onChange={(e) => setValue(e.target.value)} placeholder="e.g. Weekdays 18:00–21:00" />
+            <div className="flex gap-2">
+              <Button type="submit" variant="primary" loading={saving}>
+                Save
+              </Button>
+              <Button variant="ghost" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
             </div>
-
-            <div className="text-center md:text-left flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-bold mb-3">
-                <Award size={12} /> LEVEL 1 TRADER
-              </div>
-              <h1 className="text-4xl md:text-5xl font-black text-white mb-2">{user?.name}</h1>
-              <p className="text-slate-400 text-lg mb-6">{user?.email}</p>
-
-              <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                <div className="flex items-center gap-2 bg-indigo-500/10 px-4 py-2 rounded-xl border border-indigo-500/20">
-                  <Zap size={18} className="text-yellow-400 fill-yellow-400" />
-                  <span className="text-white font-mono font-bold">{user?.timeCredits} CREDITS</span>
-                </div>
-                <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10">
-                  <Calendar size={16} className="text-slate-400" />
-                  <span className="text-slate-300 text-sm font-medium">Joined {dayjs(user?.createdAt).format("MMM YYYY")}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* STATS & BADGES GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            {/* STATS */}
-            <motion.div variants={itemVariants} className="bg-[#0f172a]/60 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-white/5">
-                <h3 className="text-2xl font-black text-white mb-6 flex items-center gap-2">
-                    <Award className="text-yellow-500" /> Statistics
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/5 p-4 rounded-2xl">
-                        <div className="text-slate-400 text-xs font-bold uppercase mb-1">Classes Attended</div>
-                        <div className="text-3xl font-black text-white">{user?.stats?.classesAttended || 0}</div>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl">
-                        <div className="text-slate-400 text-xs font-bold uppercase mb-1">Classes Taught</div>
-                        <div className="text-3xl font-black text-white">{user?.stats?.classesTaught || 0}</div>
-                    </div>
-                </div>
-            </motion.div>
-
-            {/* PREFERENCES */}
-            <motion.div variants={itemVariants} className="bg-[#0f172a]/60 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-white/5">
-                <h3 className="text-2xl font-black text-white mb-6 flex items-center gap-2">
-                    <Clock className="text-indigo-500" /> Availability
-                </h3>
-                <div className="space-y-4">
-                    <div className="text-slate-400 text-sm">Set your preferred teaching/learning hours to help others schedule with you.</div>
-                    {isEditingHours ? (
-                        <div className="flex gap-2">
-                            <input 
-                                type="text" 
-                                value={preferredHours} 
-                                onChange={(e) => setPreferredHours(e.target.value)} 
-                                className="flex-1 bg-slate-800 text-white p-3 rounded-xl border border-white/10 focus:border-indigo-500 outline-none"
-                                placeholder="e.g. Weekdays 6PM - 9PM"
-                            />
-                            <button onClick={handleUpdateProfile} className="bg-green-600 text-white px-4 rounded-xl font-bold">Save</button>
-                        </div>
-                    ) : (
-                        <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
-                            <span className="text-white font-mono">{user?.preferredHours || "No preference set"}</span>
-                            <button onClick={() => setIsEditingHours(true)} className="text-indigo-400 text-sm font-bold hover:text-white">Edit</button>
-                        </div>
-                    )}
-                </div>
-            </motion.div>
-        </div>
-
-        {/* BADGES */}
-        {user?.badges?.length > 0 && (
-            <motion.div variants={itemVariants} className="mb-12">
-                <h3 className="text-2xl font-black text-white mb-6">Earned Badges</h3>
-                <div className="flex gap-4 flex-wrap">
-                    {user.badges.map((badge, idx) => (
-                        <div key={idx} className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 p-4 rounded-2xl border border-yellow-500/30 flex items-center gap-3">
-                            <span className="text-2xl">{badge.icon}</span>
-                            <div>
-                                <div className="text-white font-bold">{badge.name}</div>
-                                <div className="text-yellow-200/50 text-xs">{dayjs(badge.dateEarned).format("MMM YYYY")}</div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </motion.div>
+          </form>
+        ) : (
+          <p className={user.preferredHours ? "font-mono text-ink" : "text-muted"}>
+            {user.preferredHours || "Not set. Tell learners when you're usually around."}
+          </p>
         )}
-
-        {/* LISTINGS MANAGEMENT */}
-        <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-2 mt-12">
-          <Layers className="text-indigo-500" /> Manage Inventory
-        </h2>
-
-        <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid md:grid-cols-2 gap-6">
-          {myListings.length > 0 ? myListings.map((listing) => (
-            <motion.div
-              key={listing._id}
-              variants={itemVariants}
-              whileHover={{ y: -5 }}
-              className="bg-[#1e293b]/50 backdrop-blur-sm p-8 rounded-[2rem] border border-white/5 relative group overflow-hidden hover:border-indigo-500/30 transition duration-300"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <span className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-lg text-xs font-black uppercase">
-                  {listing.category}
-                </span>
-                <button
-                  onClick={() => handleDelete(listing._id)}
-                  className="w-10 h-10 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-
-              <h3 className="text-2xl font-bold text-white mb-2">{listing.title}</h3>
-              <div className="flex items-center gap-4 text-slate-400 text-sm font-medium mb-6">
-                <span className="flex items-center gap-1"><Clock size={14} /> {listing.duration} mins</span>
-                <span className="flex items-center gap-1"><Calendar size={14} /> {dayjs(listing.createdAt).format("MMM Do")}</span>
-              </div>
-            </motion.div>
-          )) : (
-            <div className="col-span-full py-20 text-center text-slate-500">
-              <p>No listings found.</p>
-            </div>
-          )}
-        </motion.div>
       </div>
+    </Panel>
+  );
+};
+
+const Profile = () => {
+  const { user } = useContext(AuthContext);
+  const confirm = useConfirm();
+  const [listings, setListings] = useState(null);
+
+  useEffect(() => {
+    api
+      .get("/api/listings/my")
+      .then(({ data }) => setListings(data))
+      .catch(() => setListings([]));
+  }, []);
+
+  const remove = async (listing) => {
+    const ok = await confirm({
+      title: "Remove this listing?",
+      body: `“${listing.title}” stops showing up for learners. Existing bookings aren't affected.`,
+      confirmLabel: "Remove",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/api/listings/${listing._id}`);
+      setListings((prev) => prev.filter((l) => l._id !== listing._id));
+      toast.success("Listing removed");
+    } catch (error) {
+      toast.error(apiError(error, "Couldn't remove it"));
+    }
+  };
+
+  const skills = [
+    ["Teaches", user.skillsOffered],
+    ["Wants to learn", user.skillsRequested],
+  ];
+
+  return (
+    <div className="space-y-8">
+      <header className="flex flex-col gap-5 border-b border-line pb-6 sm:flex-row sm:items-center">
+        <Avatar name={user.name} size="lg" />
+        <div className="min-w-0 flex-1">
+          <h1 className="text-3xl tracking-tightest truncate">{user.name}</h1>
+          <p className="flex flex-wrap items-baseline gap-x-3 text-muted">
+            <span>{user.email}</span>
+            <span className="font-mono text-sm text-faint">joined {formatDate(user.createdAt)}</span>
+          </p>
+        </div>
+      </header>
+
+      <Panel className="grid grid-cols-2 md:grid-cols-4 gap-px bg-line overflow-hidden">
+        <Stat label="Balance">
+          <Hours value={user.timeCredits} />
+        </Stat>
+        <Stat label="Taught">{user.stats?.classesTaught || 0}</Stat>
+        <Stat label="Attended">{user.stats?.classesAttended || 0}</Stat>
+        <Stat label="Rating">{user.ratingCount ? user.rating.toFixed(1) : "—"}</Stat>
+      </Panel>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Panel>
+          <PanelHeader title="Skills" />
+          <div className="p-4 space-y-4">
+            {skills.map(([label, list]) => (
+              <div key={label}>
+                <p className="text-sm text-muted mb-2">{label}</p>
+                {list?.length ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {list.map((s) => (
+                      <Stamp key={s}>{s}</Stamp>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-faint">Nothing added yet.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Panel>
+        <div className="space-y-6">
+          <Availability />
+          {user.badges?.length > 0 && (
+            <Panel>
+              <PanelHeader title="Badges" />
+              <div className="p-4 flex flex-wrap gap-2">
+                {user.badges.map((b) => (
+                  <Stamp key={b.name} tone="accent">
+                    {b.name}
+                  </Stamp>
+                ))}
+              </div>
+            </Panel>
+          )}
+        </div>
+      </div>
+
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg">Your listings</h2>
+          <Button size="sm" to="/create-listing">
+            Post a skill
+          </Button>
+        </div>
+        {listings === null ? (
+          <SkeletonRows rows={2} />
+        ) : listings.length === 0 ? (
+          <EmptyState title="You haven't posted a skill." action={<Button to="/create-listing">Post one</Button>}>
+            Post something you can teach to start earning hours.
+          </EmptyState>
+        ) : (
+          <ul className="border border-line rounded divide-y divide-line">
+            {listings.map((l) => (
+              <li key={l._id} className="flex items-center gap-4 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium truncate">{l.title}</p>
+                  <p className="font-mono text-2xs uppercase tracking-wider text-faint">
+                    {l.category} · {formatDuration(l.duration)} · posted {formatDate(l.createdAt)}
+                  </p>
+                </div>
+                <Hours value={l.creditCost} className="text-sm" />
+                <Button size="sm" variant="ghost" onClick={() => remove(l)}>
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 };
