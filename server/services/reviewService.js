@@ -37,7 +37,8 @@ const create = async ({ bookingId, authorId, rating, comment }) => {
           },
         },
       ],
-      { session }
+      // Mongoose 9 requires opting in to pipeline-style updates
+      { session, updatePipeline: true }
     );
   });
 
