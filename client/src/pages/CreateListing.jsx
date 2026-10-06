@@ -3,6 +3,7 @@ import api from "../api/client";
 import { useNavigate } from "react-router-dom";
 import { useNotification } from "../context/NotificationContext";
 import { PenTool } from "lucide-react";
+import { CATEGORIES, DURATIONS } from "../lib/constants";
 
 const CreateListing = () => {
   const [form, setForm] = useState({ title: "", description: "", category: "Coding", duration: 60 });
@@ -17,7 +18,7 @@ const CreateListing = () => {
       navigate("/");
     } catch (error) {
       console.error(error);
-      addNotification("Failed to create listing", "error");
+      addNotification(error.response?.data?.message || "Failed to create listing", "error");
     }
   };
 
@@ -38,10 +39,12 @@ const CreateListing = () => {
 
            <div className="grid grid-cols-2 gap-4">
               <select className="p-4 bg-slate-50 rounded-xl outline-none" onChange={e => setForm({...form, category: e.target.value})}>
-                 {["Coding", "Music", "Design", "Language"].map(c => <option key={c}>{c}</option>)}
+                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
-              <input type="number" value={form.duration} className="p-4 bg-slate-50 rounded-xl outline-none"
-                 onChange={e => setForm({...form, duration: e.target.value})} />
+              <select value={form.duration} className="p-4 bg-slate-50 rounded-xl outline-none"
+                 onChange={e => setForm({...form, duration: Number(e.target.value)})}>
+                {DURATIONS.map(d => <option key={d} value={d}>{d} min · {d / 60} credits</option>)}
+              </select>
            </div>
 
            <button className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-500 transition">Publish</button>

@@ -32,7 +32,7 @@ How the system is built: architecture, stack, folder structure, data model, cred
 
 - One Node process serves the REST API, Socket.IO and the PeerJS signalling server on the same HTTP server and port.
 - Video and audio go directly between the two browsers over WebRTC. The server only brokers the connection.
-- MongoDB Atlas runs as a replica set, which allows multi-document transactions. Every credit movement uses one.
+- MongoDB Atlas runs as a replica set, which allows multi-document transactions. Every credit movement uses one. A plain standalone local `mongod` will not work; use Atlas (free M0 is fine) or a local single-node replica set.
 
 ## 2. Stack
 
@@ -59,7 +59,7 @@ How the system is built: architecture, stack, folder structure, data model, cred
 
 | Concern | Library |
 |---|---|
-| Runtime | Node.js 20 LTS (CommonJS) |
+| Runtime | Node.js 22+ (CommonJS) |
 | HTTP framework | Express 5 |
 | Database | MongoDB with Mongoose 9 |
 | Real-time | Socket.IO 4 |
@@ -71,7 +71,7 @@ How the system is built: architecture, stack, folder structure, data model, cred
 | Security | helmet, cors, express-rate-limit |
 | Performance / logs | compression, morgan |
 | Scheduled job | node-cron |
-| Tests | Vitest, supertest, mongodb-memory-server (replica set mode) |
+| Tests | node:test (built in), supertest, mongodb-memory-server (replica set mode) |
 | Dev | nodemon |
 
 Not used: Stripe (the product has no payments), the `crypto` npm package (Node's built-in `crypto` is used), moment (replaced by dayjs).
@@ -195,11 +195,10 @@ SkillBarter/
     │   ├── seed.js               Demo users, listings, bookings
     │   └── resetDb.js            Refuses to run when NODE_ENV=production
     └── tests/
-        ├── setup.js              In-memory replica set
+        ├── helpers.js            In-memory replica set, fixtures, ledger invariant checks
         ├── auth.test.js
         ├── listings.test.js
-        ├── bookings.test.js
-        └── credits.test.js       Balance and ledger invariants
+        └── bookings.test.js      Booking flow, credits, disputes, concurrency
 ```
 
 ## 4. Data model
@@ -451,9 +450,9 @@ Every room event checks that the socket has joined that room first.
 | `PORT` | `5000` | |
 | `MONGO_URI` | `mongodb+srv://...` | Atlas connection string |
 | `JWT_SECRET` | long random string | |
-| `JWT_EXPIRES_IN` | `7d` | |
+| `JWT_EXPIRES_IN` | `7d` | Optional |
 | `CLIENT_URL` | `http://localhost:5173` | CORS origin and links in emails |
-| `EMAIL_USER` | `you@gmail.com` | Gmail sender |
+| `EMAIL_USER` | `you@gmail.com` | Gmail sender. Optional outside production: without it, emails (including verification links) are printed to the server console |
 | `EMAIL_PASS` | 16-char app password | |
 | `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` | optional | TURN relay for WebRTC |
 
@@ -487,7 +486,7 @@ To test a session room locally, log in as the learner and the teacher in two dif
 |---|---|---|
 | server | `npm run dev` | nodemon |
 | server | `npm start` | production start |
-| server | `npm test` | Vitest + supertest against an in-memory replica set |
+| server | `npm test` | node:test + supertest against an in-memory replica set |
 | server | `npm run seed` | Demo data |
 | server | `npm run reset` | Wipe database (blocked in production) |
 | client | `npm run dev` | Vite dev server |
@@ -497,7 +496,7 @@ To test a session room locally, log in as the learner and the teacher in two dif
 
 ## 12. Testing
 
-- Server tests run against `mongodb-memory-server` in replica set mode, so transactions behave as in Atlas. Tests never touch a real database.
+- Server tests run against `mongodb-memory-server` in replica set mode, so transactions behave as in Atlas. Tests never touch a real database. The first run downloads a MongoDB binary (~100 MB) into the npm cache.
 - Coverage focus: the booking state machine and the credit ledger.
 - Invariants checked after every booking test:
   - for each user, the sum of their ledger entries equals `timeCredits`

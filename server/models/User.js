@@ -1,71 +1,51 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Please add a name'],
-  },
-  email: {
-    type: String,
-    required: [true, 'Please add an email'],
-    unique: true,
-  },
-  password: {
-    type: String,
-    required: [true, 'Please add a password'],
-  },
-  skillsOffered: {
-    type: [String],
-    required: false,
-  },
-  skillsRequested: {
-    type: [String],
-    required: false,
-  },
-  timeCredits: {
-    type: Number,
-    default: 2, 
-  },
-  preferredHours: { type: String, default: "" }, // E.g., "Weekdays 6pm-9pm"
-  stats: {
-    classesAttended: { type: Number, default: 0 },
-    classesTaught: { type: Number, default: 0 },
-  },
-  badges: [{
-    name: String,
-    icon: String,
-    dateEarned: { type: Date, default: Date.now }
-  }],
-  rating: {
-    type: Number,
-    default: 0,
-  },
-  reviews: [
-    {
-      user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-      },
-      rating: {
-        type: Number,
-        required: true,
-      },
-      comment: {
-        type: String,
-        required: true,
-      },
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: [true, "Name is required"], trim: true, maxlength: 60 },
+    email: { type: String, required: [true, "Email is required"], unique: true, lowercase: true, trim: true },
+    password: { type: String, required: true, select: false },
+
+    bio: { type: String, default: "", maxlength: 500 },
+    skillsOffered: { type: [String], default: [] },
+    skillsRequested: { type: [String], default: [] },
+    preferredHours: { type: String, default: "", maxlength: 100 },
+    timezone: { type: String, default: "UTC" },
+
+    // Available balance. Only creditService changes this, and every change
+    // has a matching CreditEntry, so the ledger always adds up to this number.
+    timeCredits: { type: Number, default: 0, min: 0 },
+
+    stats: {
+      classesTaught: { type: Number, default: 0 },
+      classesAttended: { type: Number, default: 0 },
     },
-  ],
-  isVerified: {
-    type: Boolean,
-    default: false,
+    rating: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
+    badges: [
+      {
+        name: String,
+        icon: String,
+        dateEarned: { type: Date, default: Date.now },
+      },
+    ],
+
+    role: { type: String, enum: ["user", "admin"], default: "user" },
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String, select: false },
+    verificationExpires: { type: Date, select: false },
   },
-  verificationToken: {
-    type: String,
+  { timestamps: true }
+);
+
+userSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    delete ret.password;
+    delete ret.verificationToken;
+    delete ret.verificationExpires;
+    delete ret.__v;
+    return ret;
   },
-},
-{
-  timestamps: true,
 });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model("User", userSchema);

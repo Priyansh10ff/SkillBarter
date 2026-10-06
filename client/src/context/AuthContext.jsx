@@ -28,17 +28,12 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (email, password) => {
     const { data } = await api.post("/api/users/login", { email, password });
     localStorage.setItem(TOKEN_KEY, data.token);
-    setUser(data);
+    setUser(data.user);
     return { success: true, data };
   }, []);
 
   const register = useCallback(async (name, email, password, skills) => {
     const { data } = await api.post("/api/users", { name, email, password, skills });
-    // Registration returns a token only when email verification is disabled
-    if (data.token) {
-      localStorage.setItem(TOKEN_KEY, data.token);
-      setUser(data);
-    }
     return { success: true, data };
   }, []);
 

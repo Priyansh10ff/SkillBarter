@@ -6,6 +6,7 @@ import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { Search, Clock, ArrowRight, Sparkles, Zap, BookOpen, User } from "lucide-react";
 import Hero3D from "../components/home/Hero3D";
 import toast from "react-hot-toast";
+import { CATEGORIES } from "../lib/constants";
 
 const Home = () => {
   const [listings, setListings] = useState([]);
@@ -30,16 +31,16 @@ const Home = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleBook = async (id) => {
+  const handleBook = async (listing) => {
     if (!user) return addNotification("Please login to book a class", "error");
-    if (user.timeCredits < 1) return addNotification("Insufficient credits! You need at least 1 credit.", "error");
+    if (user.timeCredits < listing.creditCost) return addNotification(`You need ${listing.creditCost} credits to book this.`, "error");
     
     const toastId = toast.loading("Processing booking...");
 
     try {
-      await api.post("/api/transactions/book", { listingId: id });
+      await api.post("/api/bookings", { listingId: listing._id });
       toast.dismiss(toastId);
-      addNotification("Booking Confirmed! 1 Credit deducted.", "success");
+      addNotification(`Booked. ${listing.creditCost} credits held until the session is done.`, "success");
       refreshUser();
     } catch (err) { 
       toast.dismiss(toastId);
@@ -48,7 +49,7 @@ const Home = () => {
     }
   };
 
-  const categories = ["All", "Coding", "Music", "Design", "Language", "Lifestyle"];
+  const categories = ["All", ...CATEGORIES];
 
   return (
     <div className="min-h-screen bg-[#020617] pb-20 overflow-x-hidden">
@@ -162,7 +163,7 @@ const Home = () => {
 
                   {user?._id !== listing.teacher?._id ? (
                     <button
-                      onClick={() => handleBook(listing._id)}
+                      onClick={() => handleBook(listing)}
                       className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.6)]"
                     >
                       <ArrowRight size={20} />

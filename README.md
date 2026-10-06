@@ -16,12 +16,15 @@ docs/     Product, technical and deployment docs
 
 ## Run locally
 
+Needs Node 22+ and a MongoDB replica set (an Atlas free cluster works).
+
 ```bash
 # API
 cd server
 cp .env.example .env      # fill in MONGO_URI, JWT_SECRET, EMAIL_USER, EMAIL_PASS
 npm install
 npm run dev               # http://localhost:5000
+npm test                  # API tests on an in-memory database
 
 # Frontend (second terminal)
 cd client

@@ -4,29 +4,36 @@ const helmet = require("helmet");
 const compression = require("compression");
 const morgan = require("morgan");
 const mongoose = require("mongoose");
+const env = require("./config/env");
 const corsOrigins = require("./config/corsOrigins");
+const { apiLimiter } = require("./middleware/rateLimit");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
+// Render and Vercel sit in front of the app; trust their X-Forwarded-For for rate limits
+app.set("trust proxy", 1);
+
 // ===== MIDDLEWARE =====
 app.use(helmet());
 app.use(compression());
-app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+if (env.NODE_ENV !== "test") app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(express.json({ limit: "100kb" }));
 app.use(cors({ origin: corsOrigins, credentials: true }));
 
 // ===== HEALTH =====
 app.get("/health", (req, res) => {
-  const db = mongoose.connection.readyState === 1 ? "connected" : "disconnected";
-  const ok = db === "connected";
-  res.status(ok ? 200 : 503).json({ status: ok ? "ok" : "degraded", db });
+  const ok = mongoose.connection.readyState === 1;
+  res.status(ok ? 200 : 503).json({ status: ok ? "ok" : "degraded", db: ok ? "connected" : "disconnected" });
 });
 
 // ===== ROUTES =====
+app.use("/api", apiLimiter);
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/listings", require("./routes/listingRoutes"));
-app.use("/api/transactions", require("./routes/transactionRoutes"));
+app.use("/api/bookings", require("./routes/bookingRoutes"));
+app.use("/api/wallet", require("./routes/walletRoutes"));
+app.use("/api/admin", require("./routes/adminRoutes"));
 
 // ===== ERRORS =====
 app.use(notFound);

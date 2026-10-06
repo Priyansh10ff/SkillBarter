@@ -2,16 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Add noise texture to backgrounds */
-.bg-noise {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+/* ===== Theme tokens (RGB triplets for Tailwind alpha support) ===== */
+:root {
+  --bg: 15 15 13;            /* #0F0F0D page */
+  --surface: 23 23 21;       /* #171715 panels */
+  --raised: 30 30 27;        /* #1E1E1B hover, inputs */
+  --line: 42 42 38;          /* #2A2A26 borders */
+  --line-strong: 58 58 53;   /* #3A3A35 hover borders */
+  --ink: 236 234 227;        /* #ECEAE3 text */
+  --muted: 140 138 130;      /* #8C8A82 secondary text */
+  --faint: 94 92 86;         /* #5E5C56 disabled, decoration */
+  --accent: 255 176 32;      /* #FFB020 credits and time only */
+  --accent-ink: 26 18 0;     /* text on accent */
+  --ok: 95 179 122;          /* #5FB37A */
+  --bad: 224 96 74;          /* #E0604A */
+  --warn: 214 168 76;        /* #D6A84C */
+  color-scheme: dark;
 }
 
-/* Hide scrollbar but keep functionality */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+@layer base {
+  html {
+    @apply bg-bg text-ink font-sans antialiased;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply min-h-screen text-[15px] leading-relaxed;
+  }
+  h1, h2, h3 {
+    @apply font-semibold tracking-tight text-ink;
+  }
+  ::selection {
+    @apply bg-accent text-accent-ink;
+  }
+  :focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-accent;
+  }
+  input::placeholder, textarea::placeholder {
+    @apply text-faint;
+  }
+  /* Calendar/clock icons in date inputs */
+  ::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+  }
+  dialog::backdrop {
+    background: rgb(0 0 0 / 0.6);
+  }
 }
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .label-mono {
+    @apply font-mono text-2xs uppercase tracking-wider text-muted;
+  }
+}
+
+/* Thin scrollbars that match the theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--line-strong)) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

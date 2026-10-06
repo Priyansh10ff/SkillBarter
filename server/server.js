@@ -1,20 +1,24 @@
-const dotenv = require("dotenv");
-dotenv.config();
+require("dotenv").config();
+const env = require("./config/env");
 
 const http = require("http");
 const connectDB = require("./config/db");
 const app = require("./app");
 const initSockets = require("./sockets");
+const { setIO } = require("./services/realtime");
+const { startAutoReleaseJob } = require("./jobs/autoRelease");
 
-connectDB();
+const start = async () => {
+  await connectDB();
 
-const server = http.createServer(app);
-const io = initSockets(server);
+  const server = http.createServer(app);
+  setIO(initSockets(server));
 
-// Controllers emit real-time events through req.app.get("io")
-app.set("io", io);
+  server.listen(env.PORT, () => {
+    console.log(`Server running on port ${env.PORT} (${env.NODE_ENV})`);
+  });
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+  startAutoReleaseJob();
+};
+
+start();

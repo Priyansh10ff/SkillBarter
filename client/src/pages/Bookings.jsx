@@ -1,85 +1,91 @@
+// Functional rewire for the new booking API. Visual redesign comes with the design system.
 import { useEffect, useState, useContext, useCallback } from "react";
 import api from "../api/client";
 import AuthContext from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
 import dayjs from "../lib/date";
-import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
-import {
-  Video, CheckCircle, Clock, ArrowUpRight, ArrowDownLeft, Activity, CalendarClock
-} from "lucide-react";
+import { BOOKING_STATUS as S } from "../lib/constants";
+import { Video, CheckCircle, ArrowUpRight, ArrowDownLeft, CalendarClock, XCircle, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 
-const Bookings = () => {
-  const [transactions, setTransactions] = useState([]);
-  const { user, refreshUser } = useContext(AuthContext);
-  const [filter, setFilter] = useState("ALL");
-  const [scheduleDate, setScheduleDate] = useState("");
+const STATUS_STYLE = {
+  PENDING: "text-yellow-400 border-yellow-400/30",
+  SCHEDULED: "text-indigo-300 border-indigo-300/30",
+  COMPLETED: "text-green-400 border-green-400/30",
+  CANCELLED: "text-slate-400 border-slate-400/30",
+  DISPUTED: "text-red-400 border-red-400/30",
+};
 
-  const fetchTransactions = useCallback(async () => {
+const errorMessage = (error, fallback) => error.response?.data?.message || fallback;
+
+const Bookings = () => {
+  const { user, refreshUser } = useContext(AuthContext);
+  const { socket } = useSocket();
+  const [bookings, setBookings] = useState([]);
+  const [filter, setFilter] = useState("ALL");
+  const [dates, setDates] = useState({}); // bookingId -> datetime-local value
+
+  const fetchBookings = useCallback(async () => {
     try {
-      const { data } = await api.get("/api/transactions/my");
-      setTransactions(data);
-    } catch (error) { console.error(error); }
+      const { data } = await api.get("/api/bookings");
+      setBookings(data);
+    } catch (error) {
+      console.error(error);
+    }
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
+  useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
-  const handleComplete = async (id) => {
+  // Refresh when the other person changes a booking
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("booking:update", fetchBookings);
+    return () => socket.off("booking:update", fetchBookings);
+  }, [socket, fetchBookings]);
+
+  const run = async (id, action, body, success) => {
     try {
-      await api.put(`/api/transactions/${id}/complete`, {});
-      toast.success("Funds Released!");
-      fetchTransactions();
+      await api.post(`/api/bookings/${id}/${action}`, body);
+      toast.success(success);
+      fetchBookings();
       refreshUser();
-    } catch (error) { 
-      console.error(error);
-      toast.error("Error completing transaction"); 
+    } catch (error) {
+      toast.error(errorMessage(error, "Something went wrong"));
     }
   };
 
-  const handleSchedule = async (id, action) => {
-    if (action === 'PROPOSE' && !scheduleDate) return toast.error("Pick a date first!");
-
-    let reason = "";
-    if (action === 'REJECT') {
-        reason = prompt("Enter reason for rejection:");
-        if (!reason) return; // Cancel if no reason provided
-    }
-
-    try {
-      await api.put(`/api/transactions/${id}/schedule`,
-        { date: scheduleDate, action, reason }
-      );
-      if (action === 'REJECT') toast.error("Time Rejected");
-      else toast.success(action === 'PROPOSE' ? "Time Proposed!" : "Time Accepted!");
-      
-      fetchTransactions();
-    } catch (error) { 
-      console.error(error);
-      toast.error("Scheduling failed"); 
-    }
+  const propose = (id) => {
+    if (!dates[id]) return toast.error("Pick a date and time first");
+    run(id, "propose", { date: new Date(dates[id]).toISOString() }, "Time proposed");
   };
 
-  const filteredTransactions = transactions.filter(tx => {
-    const isSender = tx.sender?._id === user?._id;
-    if (filter === "SENT") return isSender;
-    if (filter === "RECEIVED") return !isSender;
+  // TODO(design system): replace prompt/confirm with proper dialogs
+  const cancel = (id) => {
+    if (!window.confirm("Cancel this booking? Held credits go back to the learner.")) return;
+    run(id, "cancel", {}, "Booking cancelled");
+  };
+
+  const dispute = (id) => {
+    const reason = window.prompt("What went wrong? (credits stay frozen until it's reviewed)");
+    if (!reason) return;
+    run(id, "dispute", { reason }, "Problem reported");
+  };
+
+  const visible = bookings.filter((b) => {
+    const learning = b.learner?._id === user?._id;
+    if (filter === "LEARNING") return learning;
+    if (filter === "TEACHING") return !learning;
     return true;
   });
 
   return (
-    <div className="min-h-screen bg-[#020617] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] pt-28 pb-20 px-6">
+    <div className="min-h-screen bg-[#020617] pt-28 pb-20 px-6">
       <div className="container mx-auto max-w-4xl">
-
-        {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-black uppercase mb-4">
-              <Activity size={14} /> Live Ledger
-            </div>
-            <h1 className="text-4xl font-black text-white">Activity Log</h1>
-          </div>
+          <h1 className="text-4xl font-black text-white">Bookings</h1>
           <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/10">
-            {["ALL", "SENT", "RECEIVED"].map((f) => (
+            {["ALL", "LEARNING", "TEACHING"].map((f) => (
               <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter === f ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"}`}>
                 {f}
               </button>
@@ -87,81 +93,95 @@ const Bookings = () => {
           </div>
         </div>
 
-        {/* FEED */}
+        {visible.length === 0 && (
+          <p className="text-slate-500 text-center py-20">No bookings yet. Book a session from the home page, or post a skill to start teaching.</p>
+        )}
+
         <div className="space-y-4">
-          {filteredTransactions.map((tx, index) => {
-            const isSender = tx.sender?._id === user?._id;
-            const isPending = tx.status === "PENDING";
-            const pendingAcceptance = tx.appointmentStatus === 'PROPOSED';
-            const isScheduled = tx.appointmentStatus === 'SCHEDULED';
+          {visible.map((b) => {
+            const learning = b.learner?._id === user?._id;
+            const other = learning ? b.teacher : b.learner;
+            const myProposal = b.proposal?.by === user?._id;
+            const started = b.scheduledAt && dayjs(b.scheduledAt).isBefore(dayjs());
 
             return (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
-                key={tx._id}
-                className="bg-[#0f172a]/60 backdrop-blur-xl p-6 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-all"
-              >
+              <div key={b._id} className="bg-[#0f172a]/60 p-6 rounded-2xl border border-white/5">
                 <div className="flex flex-col md:flex-row gap-6">
-                  {/* Icon */}
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl shrink-0 ${isSender ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
-                    {isSender ? <ArrowUpRight /> : <ArrowDownLeft />}
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${learning ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}>
+                    {learning ? <ArrowUpRight /> : <ArrowDownLeft />}
                   </div>
 
-                  {/* Details */}
-                  <div className="flex-1">
-                    <h3 className="font-bold text-white text-lg flex items-center gap-2">
-                      {isSender ? "Outgoing" : "Incoming"} · {tx.listing?.title}
-                    </h3>
-                    <div className="text-slate-400 text-sm mt-1 mb-4">
-                      with <span className="text-white font-bold">{isSender ? tx.receiver?.name : tx.sender?.name}</span>
+                  <div className="flex-1 space-y-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h3 className="font-bold text-white text-lg">{b.listingSnapshot?.title}</h3>
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 border rounded ${STATUS_STYLE[b.status]}`}>{b.status}</span>
+                    </div>
+                    <div className="text-slate-400 text-sm">
+                      {learning ? "Learning from" : "Teaching"} <span className="text-white font-bold">{other?.name}</span>
+                      {" · "}<span className="font-mono">{b.creditCost} credits</span>
                     </div>
 
-                    {/* SCHEDULING UI */}
-                    {isPending && (
-                      <div className="bg-black/20 p-4 rounded-xl border border-white/5">
-                        {isScheduled ? (
-                          <div className="flex items-center gap-2 text-green-400 font-bold">
-                            <CalendarClock size={16} /> Scheduled: {dayjs(tx.scheduledDate).format("MMM Do, h:mm a")}
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-2">
-                            <div className="text-slate-400 text-xs font-bold uppercase">Scheduling Required</div>
-                            {pendingAcceptance ? (
-                              <div className="flex items-center justify-between">
-                                <span className="text-white">Proposed: {dayjs(tx.proposedDate).format("MMM Do, h:mm a")}</span>
-                                {/* Only Receiver can accept */}
-                                {tx.proposedBy !== user._id && (
-                                  <button onClick={() => handleSchedule(tx._id, 'ACCEPT')} className="bg-green-600 px-3 py-1 rounded text-white text-xs font-bold">Accept</button>
-                                )}
-                                {tx.proposedBy === user._id && <span className="text-xs text-yellow-500">Waiting for partner...</span>}
-                              </div>
+                    {b.status === S.PENDING && (
+                      <div className="bg-black/20 p-4 rounded-xl border border-white/5 space-y-3">
+                        {b.proposal?.date ? (
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-white text-sm">Proposed: {dayjs(b.proposal.date).format("ddd, MMM D · h:mm A")}</span>
+                            {myProposal ? (
+                              <span className="text-xs text-yellow-500">Waiting for {other?.name} to accept</span>
                             ) : (
-                              <div className="flex gap-2">
-                                <input type="datetime-local" className="bg-slate-800 text-white p-2 rounded text-xs" onChange={(e) => setScheduleDate(e.target.value)} />
-                                <button onClick={() => handleSchedule(tx._id, 'PROPOSE')} className="bg-indigo-600 px-3 py-1 rounded text-white text-xs font-bold">Propose Time</button>
-                              </div>
+                              <button onClick={() => run(b._id, "accept", {}, "Session scheduled")} className="bg-green-600 px-3 py-1 rounded text-white text-xs font-bold">Accept</button>
                             )}
                           </div>
+                        ) : (
+                          <div className="text-slate-400 text-xs">No time proposed yet.</div>
                         )}
+                        <div className="flex flex-wrap gap-2">
+                          <input
+                            type="datetime-local"
+                            className="bg-slate-800 text-white p-2 rounded text-xs"
+                            value={dates[b._id] || ""}
+                            onChange={(e) => setDates({ ...dates, [b._id]: e.target.value })}
+                          />
+                          <button onClick={() => propose(b._id)} className="bg-indigo-600 px-3 py-1 rounded text-white text-xs font-bold">
+                            {b.proposal?.date ? "Suggest another time" : "Propose time"}
+                          </button>
+                        </div>
                       </div>
                     )}
+
+                    {b.scheduledAt && (
+                      <div className="flex items-center gap-2 text-sm text-indigo-200">
+                        <CalendarClock size={16} /> {dayjs(b.scheduledAt).format("ddd, MMM D · h:mm A")}
+                      </div>
+                    )}
+                    {b.status === S.DISPUTED && <div className="text-red-300 text-sm">Reported: {b.dispute?.reason}. Credits are frozen until it's reviewed.</div>}
+                    {b.status === S.CANCELLED && b.cancelReason && <div className="text-slate-500 text-sm">Reason: {b.cancelReason}</div>}
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex flex-col gap-2 justify-center">
-                    {isPending && isScheduled && (
-                      <a href={`/room/${tx._id}?role=${isSender ? 'student' : 'teacher'}`} target="_blank" className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-indigo-50 transition">
-                        <Video size={16} /> Start Call
+                  <div className="flex flex-col gap-2 justify-center min-w-[150px]">
+                    {b.status === S.SCHEDULED && (
+                      <a href={`/room/${b._id}?role=${learning ? "student" : "teacher"}`} target="_blank" rel="noreferrer" className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2">
+                        <Video size={16} /> Join room
                       </a>
                     )}
-                    {isPending && (
-                      <button onClick={() => handleComplete(tx._id)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2">
-                        <CheckCircle size={16} /> Release
+                    {b.status === S.SCHEDULED && learning && started && (
+                      <>
+                        <button onClick={() => run(b._id, "complete", {}, "Credits released")} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2">
+                          <CheckCircle size={16} /> Confirm done
+                        </button>
+                        <button onClick={() => dispute(b._id)} className="text-red-300 border border-red-300/30 px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2">
+                          <AlertTriangle size={16} /> Report problem
+                        </button>
+                      </>
+                    )}
+                    {(b.status === S.PENDING || (b.status === S.SCHEDULED && !started)) && (
+                      <button onClick={() => cancel(b._id)} className="text-slate-300 border border-white/10 px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2">
+                        <XCircle size={16} /> {b.status === S.PENDING && !learning ? "Decline" : "Cancel"}
                       </button>
                     )}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>

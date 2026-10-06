@@ -1,99 +1,40 @@
-const Listing = require('../models/Listing');
-const User = require('../models/User');
+const Listing = require("../models/Listing");
+const AppError = require("../utils/AppError");
 
-// @desc    Get all listings
-// @route   GET /api/listings
-// @access  Public
+// GET /api/listings
 const getListings = async (req, res) => {
-  try {
-    const listings = await Listing.find().populate('teacher', 'name rating');
-    res.status(200).json(listings);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  const listings = await Listing.find({ isActive: true }).populate("teacher", "name rating").sort({ createdAt: -1 });
+  res.json(listings);
 };
 
-// @desc    Create a new listing
-// @route   POST /api/listings
-// @access  Private
-const createListing = async (req, res) => {
-  const { title, description, category, duration } = req.body;
-
-  if (!title || !description || !category) {
-    return res.status(400).json({ message: 'Please add all required fields' });
-  }
-
-  try {
-    const listing = await Listing.create({
-      teacher: req.user.id,
-      title,
-      description,
-      category,
-      duration: duration || 60,
-    });
-
-    res.status(201).json(listing);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Get listings by current user
-// @route   GET /api/listings/my
-// @access  Private
+// GET /api/listings/my
 const getMyListings = async (req, res) => {
-  try {
-    const listings = await Listing.find({ teacher: req.user.id });
-    res.status(200).json(listings);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  const listings = await Listing.find({ teacher: req.user._id, isActive: true }).sort({ createdAt: -1 });
+  res.json(listings);
 };
 
-// @desc    Delete a listing
-// @route   DELETE /api/listings/:id
-// @access  Private
-const deleteListing = async (req, res) => {
-  try {
-    const listing = await Listing.findById(req.params.id);
-
-    if (!listing) {
-      return res.status(404).json({ message: 'Listing not found' });
-    }
-
-    // Check user ownership
-    if (listing.teacher.toString() !== req.user.id) {
-      return res.status(401).json({ message: 'User not authorized' });
-    }
-
-    await listing.deleteOne();
-    res.status(200).json({ id: req.params.id });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Get single listing
-// @route   GET /api/listings/:id
-// @access  Public
+// GET /api/listings/:id
 const getListingById = async (req, res) => {
-  try {
-    const listing = await Listing.findById(req.params.id).populate('teacher', 'name rating');
-
-    if (!listing) {
-      return res.status(404).json({ message: 'Listing not found' });
-    }
-
-    res.status(200).json(listing);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  const listing = await Listing.findOne({ _id: req.valid.params.id, isActive: true }).populate("teacher", "name rating");
+  if (!listing) throw new AppError(404, "Listing not found");
+  res.json(listing);
 };
 
-module.exports = {
-  getListings,
-  createListing,
-  getMyListings,
-  deleteListing,
-  getListingById,
+// POST /api/listings
+const createListing = async (req, res) => {
+  const listing = await Listing.create({ ...req.valid.body, teacher: req.user._id });
+  res.status(201).json(listing);
 };
+
+// DELETE /api/listings/:id  (soft delete: past bookings keep their reference)
+const deleteListing = async (req, res) => {
+  const listing = await Listing.findOne({ _id: req.valid.params.id, isActive: true });
+  if (!listing) throw new AppError(404, "Listing not found");
+  if (String(listing.teacher) !== String(req.user._id)) throw new AppError(403, "You can only remove your own listings");
+
+  listing.isActive = false;
+  await listing.save();
+  res.json({ id: listing._id });
+};
+
+module.exports = { getListings, getMyListings, getListingById, createListing, deleteListing };
