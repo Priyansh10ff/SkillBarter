@@ -7,14 +7,14 @@ const escapeHtml = require("../utils/escapeHtml");
 const outbox = [];
 
 const transporter =
-  env.EMAIL_USER && env.EMAIL_PASS && env.NODE_ENV !== "test"
+  env.EMAIL_USER && env.EMAIL_PASS && env.NODE_ENV !== "test" && !env.EMAIL_DISABLED
     ? nodemailer.createTransport({ service: "gmail", auth: { user: env.EMAIL_USER, pass: env.EMAIL_PASS } })
     : null;
 
 const sendMail = async ({ to, subject, text, html }) => {
   if (!transporter) {
     outbox.push({ to, subject, text, html });
-    if (env.NODE_ENV !== "test") console.log(`[email not configured] to ${to}: ${subject}\n${text}\n`);
+    if (env.NODE_ENV !== "test" && !env.EMAIL_DISABLED) console.log(`[email not configured] to ${to}: ${subject}\n${text}\n`);
     return;
   }
   await transporter.sendMail({ from: `Skill Barter <${env.EMAIL_USER}>`, to, subject, text, html });

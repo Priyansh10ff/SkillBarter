@@ -10,8 +10,8 @@
   --line: 42 42 38;          /* #2A2A26 borders */
   --line-strong: 58 58 53;   /* #3A3A35 hover borders */
   --ink: 236 234 227;        /* #ECEAE3 text */
-  --muted: 140 138 130;      /* #8C8A82 secondary text */
-  --faint: 94 92 86;         /* #5E5C56 disabled, decoration */
+  --muted: 168 165 156;      /* #A8A59C secondary text (≥ 6.5:1 on every surface) */
+  --faint: 135 133 127;      /* #87857F tertiary text, meta (≥ 4.5:1 on every surface, WCAG AA) */
   --accent: 255 176 32;      /* #FFB020 credits and time only */
   --accent-ink: 26 18 0;     /* text on accent */
   --ok: 95 179 122;          /* #5FB37A */

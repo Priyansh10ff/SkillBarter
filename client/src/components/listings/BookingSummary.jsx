@@ -1,7 +1,7 @@
 import { formatDuration, formatHours } from "../../lib/format";
 
-const Row = ({ label, value, strong }) => (
-  <div className="flex justify-between gap-4">
+const Row = ({ label, value, strong, className = "" }) => (
+  <div className={`flex justify-between gap-4 ${className}`}>
     <dt className="text-muted">{label}</dt>
     <dd className={strong ? "text-accent" : "text-ink"}>{value}</dd>
   </div>
@@ -17,9 +17,7 @@ export const BookingSummary = ({ listing, balance }) => {
         <Row label="length" value={formatDuration(listing.duration)} />
         <Row label="balance now" value={formatHours(balance)} />
         <Row label="held for this" value={formatHours(-listing.creditCost)} />
-        <div className="border-t border-line pt-1.5">
-          <Row label="after booking" value={formatHours(after)} strong />
-        </div>
+        <Row label="after booking" value={formatHours(after)} strong className="border-t border-line pt-1.5" />
       </dl>
       <p className="text-sm">
         The credits are held, not paid. {listing.teacher?.name} gets them after you confirm the session. Cancel before it starts and

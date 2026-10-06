@@ -21,13 +21,22 @@ Needs Node 22+ and a MongoDB replica set (an Atlas free cluster works).
 ```bash
 # API
 cd server
-cp .env.example .env      # fill in MONGO_URI, JWT_SECRET, EMAIL_USER, EMAIL_PASS
+cp .env.example .env      # fill in MONGO_URI and JWT_SECRET; leave EMAIL_* empty to print emails in the terminal
 npm install
+npm run seed              # optional: 6 demo accounts, password "password123"
 npm run dev               # http://localhost:5000
-npm test                  # API tests on an in-memory database
 
 # Frontend (second terminal)
 cd client
 npm install
 npm run dev               # http://localhost:5173
 ```
+
+| Command (in `server/`) | Does |
+|---|---|
+| `npm test` | API tests on an in-memory database |
+| `npm run seed` | Demo users, listings, sessions and reviews (`-- --reset` wipes first) |
+| `npm run make-admin -- you@example.com` | Lets that account resolve reported problems |
+| `npm run reset` | Wipes all app data (refuses in production) |
+
+Deploying: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).

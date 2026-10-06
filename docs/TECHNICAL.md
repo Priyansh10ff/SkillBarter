@@ -193,7 +193,8 @@ SkillBarter/
     │   ├── asyncHandler.js
     │   └── tokens.js             JWT + hashed one-time tokens
     ├── scripts/
-    │   ├── seed.js               Demo users, listings, bookings
+    │   ├── seed.js               Demo users, listings, bookings, reviews
+    │   ├── makeAdmin.js          npm run make-admin -- <email>
     │   └── resetDb.js            Refuses to run when NODE_ENV=production
     └── tests/
         ├── helpers.js            In-memory replica set, fixtures, ledger invariant checks
@@ -203,7 +204,8 @@ SkillBarter/
         ├── bookings.test.js      Booking flow, credits, disputes, concurrency
         ├── notifications.test.js Notifications, booking chat, socket auth
         ├── room.test.js          Room access window, peer IDs, presence, whiteboard relay
-        └── reviews.test.js       Reviews, rating average, badges, leaderboard, stats
+        ├── reviews.test.js       Reviews, rating average, badges, leaderboard, stats
+        └── seed.test.js          The demo seed keeps the ledger consistent
 ```
 
 ## 4. Data model
@@ -447,9 +449,12 @@ Whiteboard events from a socket that hasn't joined that room are ignored. In-roo
 - Disposable email domains are rejected at registration.
 - Every protected resource checks ownership or participation on the server, never only in the UI.
 - Input validated with zod on every write endpoint; unknown fields are stripped.
-- `helmet` for security headers, `cors` restricted to `CLIENT_URL`, `express.json({ limit: "100kb" })`.
+- `helmet` for security headers, `cors` restricted to `CLIENT_URL` in production (plus localhost ports in development), `express.json({ limit: "100kb" })`.
 - Rate limits: auth routes 10 requests per 15 minutes per IP; all other API routes 300 per 15 minutes.
 - Central error handler: no stack traces in production responses.
+- Text colours meet WCAG AA (4.5:1) on every surface; pages are checked with axe-core. Focus is always visible, motion respects `prefers-reduced-motion`.
+- A React error boundary replaces a crashed page with a reload screen.
+- The server shuts down cleanly on `SIGTERM` (Render deploys): sockets closed, in-flight requests finished, Mongo disconnected.
 - No secrets in the repo. `.env` files are git-ignored and `.env.example` files list every key.
 
 ## 10. Environment variables
@@ -498,7 +503,8 @@ To test a session room locally, log in as the learner and the teacher in two dif
 | server | `npm run dev` | nodemon |
 | server | `npm start` | production start |
 | server | `npm test` | node:test + supertest against an in-memory replica set |
-| server | `npm run seed` | Demo data |
+| server | `npm run seed` | Demo data through the real services (`-- --reset` wipes first; refuses in production) |
+| server | `npm run make-admin -- <email>` | Grants the admin role |
 | server | `npm run reset` | Wipe database (blocked in production) |
 | client | `npm run dev` | Vite dev server |
 | client | `npm run build` | Production build to `dist/` |

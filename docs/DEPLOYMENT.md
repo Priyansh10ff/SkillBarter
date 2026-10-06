@@ -1,90 +1,88 @@
-# Skill Barter - Production Deployment Guide
+# Deploying Skill Barter
 
-This guide outlines the steps to deploy the Skill Barter application to a production environment, ensuring security, performance, and reliability.
+Three pieces: the **client** on Vercel, the **API** on Render, the **database** on MongoDB Atlas. Email goes through Gmail SMTP.
 
-## 1. Infrastructure Architecture
-
-We recommend a **Separated Deployment Strategy**:
-- **Frontend (Client):** Deployed on **Vercel** or **Netlify** (Global CDN, Auto-HTTPS).
-- **Backend (Server):** Deployed on **Render**, **Railway**, or **Heroku** (Node.js runtime, Managed Database).
-- **Database:** **MongoDB Atlas** (Managed, Auto-Scaling, Backups).
-
----
-
-## 2. Environment Configuration
-
-### Server Environment Variables (.env)
-Ensure these are set in your backend hosting provider's dashboard:
-```bash
-NODE_ENV=production
-PORT=5000
-MONGO_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/skillbarter?retryWrites=true&w=majority
-JWT_SECRET=<strong_random_string>
-CLIENT_URL=https://<your-frontend-domain>.vercel.app
+```
+browser ──► Vercel (static client)
+   │          └── /api/* rewritten to Render (same origin, no CORS for REST)
+   └──────► Render (API + Socket.IO + PeerServer, one port)  ──► MongoDB Atlas
+              wss://…/socket.io   wss://…/peerjs
 ```
 
-### Client Environment Variables
-Committed in `client/.env.production` (no secrets), override in Vercel if needed:
-```bash
-VITE_API_URL=            # empty: /api goes through the Vercel rewrite in vercel.json
-VITE_SOCKET_URL=https://<your-backend-domain>.onrender.com
-```
+Socket.IO and PeerJS connect straight to the Render URL (`VITE_SOCKET_URL`), so `CLIENT_URL` on Render must be the exact Vercel URL or the browser will be refused.
 
 ---
 
-## 3. Deployment Steps
+## 1. Database: MongoDB Atlas
 
-### A. Database (MongoDB Atlas)
-1.  Create a Cluster on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
-2.  Whitelist `0.0.0.0/0` (or your server's static IP) in Network Access.
-3.  Create a Database User.
-4.  Get the Connection String for the `.env` file.
+1. Create a cluster. The free M0 tier works. Atlas clusters are replica sets, which the credit ledger needs for transactions; a standalone `mongod` will not work.
+2. **Database Access**: create a user with read/write on the `skillbarter` database.
+3. **Network Access**: allow `0.0.0.0/0` (Render's free tier has no fixed outbound IP).
+4. Copy the connection string:
+   `mongodb+srv://<user>:<password>@<cluster>.mongodb.net/skillbarter?retryWrites=true&w=majority`
 
-### B. Backend (Render/Railway)
-1.  Connect your GitHub repository.
-2.  Root Directory: `server`
-3.  Build Command: `npm install`
-4.  Start Command: `npm start`
-5.  **Add Environment Variables** defined above.
-6.  Wait for deployment. The health check endpoint is `/health`.
+## 2. Email: Gmail app password
 
-### C. Frontend (Vercel)
-1.  Install Vercel CLI or use the Dashboard.
-2.  Import the project from GitHub.
-3.  Root Directory: `client`
-4.  Framework Preset: **Vite**
-5.  Build Command: `npm run build`
-6.  Output Directory: `dist`
-7.  Deploy.
+1. Turn on 2-step verification for the Gmail account that will send mail.
+2. Create an app password at https://myaccount.google.com/apppasswords.
+3. Use the account as `EMAIL_USER` and the 16-character app password as `EMAIL_PASS`.
 
----
+Production refuses to start without these, because sign-up depends on the verification email.
 
-## 4. Performance Optimization Checklist
+## 3. API: Render
 
-- [x] **Gzip Compression**: Enabled on server via `compression` middleware.
-- [x] **CDN**: Vercel automatically serves the frontend via a global Edge Network.
-- [x] **Caching**: 
-    - Frontend: Static assets hashed by Vite for aggressive caching.
-    - Backend: `helmet` sets strict security headers.
-- [x] **Asset Optimization**: Vite handles minification and tree-shaking during build.
+1. New → **Blueprint**, pick the GitHub repo. Render reads `render.yaml` (root dir `server`, `npm ci --omit=dev`, `npm start`, health check `/health`).
+2. Fill in the secrets it asks for:
 
-## 5. Security Measures
+   | Key | Value |
+   |---|---|
+   | `MONGO_URI` | Atlas connection string |
+   | `EMAIL_USER` / `EMAIL_PASS` | Gmail address + app password |
+   | `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` | optional, see below |
 
-- [x] **SSL/HTTPS**: Enforced by Vercel/Render automatically.
-- [x] **Headers**: `helmet` middleware configured for HSTS, X-Frame-Options, etc.
-- [x] **CORS**: Restricted to `CLIENT_URL` only.
-- [x] **Logging**: `morgan` logging enabled for monitoring traffic anomalies.
-- [ ] **Rate Limiting**: *Recommended addition for high-traffic endpoints.*
+   `JWT_SECRET` is generated automatically. `PORT` is set by Render.
+3. If your Vercel URL differs from `https://skill-barter-sigma.vercel.app`, change `CLIENT_URL`.
+4. Deploy, then open `https://<service>.onrender.com/health`. Expect `{"status":"ok","db":"connected"}`.
 
-## 6. Maintenance & Monitoring
+Render's free tier sleeps after ~15 idle minutes; the first request after that takes 30–50 s. Bookings whose release time passed while asleep are completed as soon as it wakes.
 
-1.  **Uptime**: Use [UptimeRobot](https://uptimerobot.com/) to ping `<backend-url>/health` every 5 mins.
-2.  **Logs**: Check Render/Heroku dashboard logs for `morgan` output.
-3.  **Backups**: Enable "Cloud Backups" in MongoDB Atlas (auto-snapshots).
+**TURN (optional).** Video works peer to peer with public STUN for most networks. Users behind strict corporate or university networks may need a TURN relay. Any provider works (Metered, Twilio, or your own coturn); put its URL and credentials in the three `TURN_*` variables.
 
-## 7. Rollback Procedure
+## 4. Client: Vercel
 
-In case of a critical failure:
-1.  **Frontend**: Use Vercel's "Instant Rollback" to revert to the previous deployment.
-2.  **Backend**: Revert the git commit and trigger a new build, or use the platform's rollback feature.
-3.  **Database**: Restore from the latest MongoDB Atlas snapshot.
+1. Import the repo. **Root directory** `client`, framework preset **Vite** (build `npm run build`, output `dist`).
+2. Environment variables (Production):
+
+   | Key | Value |
+   |---|---|
+   | `VITE_SOCKET_URL` | `https://<service>.onrender.com` |
+   | `VITE_API_URL` | leave empty |
+
+   These are also committed in `client/.env.production`; dashboard values win.
+3. If the Render URL isn't `skillbarter-yew1.onrender.com`, update the `/api` rewrite in `client/vercel.json`.
+4. Deploy.
+
+## 5. After the first deploy
+
+1. Sign up with your own email, verify, finish onboarding.
+2. Make yourself an admin so you can resolve reported problems. With `MONGO_URI` pointing at production in `server/.env`:
+   ```bash
+   cd server
+   npm run make-admin -- you@example.com
+   ```
+3. Smoke test with two accounts (two browsers):
+   - [ ] sign up → verification email arrives → link logs you in → onboarding
+   - [ ] post a skill; it appears on the landing board and in search
+   - [ ] book it from the other account; balances show `held`
+   - [ ] propose and accept a time ~6 minutes ahead; both get notifications
+   - [ ] join the room from both; video connects, whiteboard and chat sync
+   - [ ] confirm the session; teacher receives the hours (wallet + email)
+   - [ ] both leave reviews; rating and badges update
+
+`npm run seed` and `npm run reset` refuse to run with `NODE_ENV=production`.
+
+## 6. Rolling back
+
+- **Client**: Vercel → Deployments → previous deployment → *Promote*.
+- **API**: Render → Deploys → previous deploy → *Rollback*, or revert the commit.
+- **Data**: Atlas M10+ has point-in-time restore; on M0, export with `mongodump` before risky changes.

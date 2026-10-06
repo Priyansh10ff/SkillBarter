@@ -40,7 +40,7 @@ const BookingCard = ({ booking: b, userId, onAction, highlighted, onReviewed }) 
             <h3 className="font-medium text-ink">{b.listingSnapshot?.title}</h3>
             <p className="text-sm text-muted">
               {learning ? "Learning from" : "Teaching"}{" "}
-              <Link to={`/u/${other?._id}`} className="text-ink hover:underline underline-offset-4">
+              <Link to={`/u/${other?._id}`} className="text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
                 {other?.name}
               </Link>{" "}
               · {formatDuration(b.listingSnapshot?.duration)}

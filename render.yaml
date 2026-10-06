@@ -1,14 +1,34 @@
+# Render blueprint for the API (Express + Socket.IO + PeerServer on one port).
+# Secrets marked sync: false are entered once in the Render dashboard.
 services:
   - type: web
     name: skill-barter-server
     runtime: node
     plan: free
-    buildCommand: cd server && npm install
-    startCommand: cd server && npm start
+    rootDir: server
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 5000
+      - key: NODE_VERSION
+        value: "22"
       - key: CLIENT_URL
         value: https://skill-barter-sigma.vercel.app
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: TURN_URL
+        sync: false
+      - key: TURN_USERNAME
+        sync: false
+      - key: TURN_CREDENTIAL
+        sync: false

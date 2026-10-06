@@ -14,6 +14,8 @@ const schema = z
     CLIENT_URL: z.url().default("http://localhost:5173"),
     EMAIL_USER: optional,
     EMAIL_PASS: optional,
+    // "true" stops all outgoing email (used by the seed script)
+    EMAIL_DISABLED: z.preprocess((v) => v === "true" || v === "1", z.boolean()).default(false),
     // Optional TURN relay for video calls behind strict NATs
     TURN_URL: optional,
     TURN_USERNAME: optional,
