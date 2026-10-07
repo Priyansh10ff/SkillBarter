@@ -16,6 +16,7 @@ const CreditEntry = require("../models/CreditEntry");
 
 const reset = async () => {
   try {
+    require("../config/db").applyDnsServers();
     await mongoose.connect(env.MONGO_URI);
     await Promise.all([User, Listing, Booking, CreditEntry].map((model) => model.deleteMany({})));
     // collection left over from the old Transaction model

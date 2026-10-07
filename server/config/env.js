@@ -9,6 +9,9 @@ const schema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     PORT: z.coerce.number().int().positive().default(5000),
     MONGO_URI: z.string({ error: "MONGO_URI is required" }).min(1, "MONGO_URI is required"),
+    // Optional, e.g. "1.1.1.1,8.8.8.8": DNS servers for resolving mongodb+srv:// when the
+    // local network's DNS can't (shows up as "querySrv ECONNREFUSED")
+    DNS_SERVERS: optional,
     JWT_SECRET: z.string({ error: "JWT_SECRET is required" }).min(16, "JWT_SECRET must be at least 16 characters"),
     JWT_EXPIRES_IN: z.string().default("7d"),
     CLIENT_URL: z.url().default("http://localhost:5173"),

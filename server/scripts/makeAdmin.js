@@ -14,6 +14,7 @@ if (!email) {
 
 (async () => {
   try {
+    require("../config/db").applyDnsServers();
     await mongoose.connect(env.MONGO_URI);
     const user = await User.findOneAndUpdate({ email }, { role: "admin" }, { returnDocument: "after" });
     if (!user) {

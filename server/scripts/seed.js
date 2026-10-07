@@ -118,6 +118,7 @@ const runSeed = async () => {
 
 const main = async () => {
   try {
+    require("../config/db").applyDnsServers();
     await mongoose.connect(env.MONGO_URI);
     await Promise.all(Object.values(mongoose.models).map((m) => m.init()));
 
