@@ -11,7 +11,7 @@ const getStats = async (req, res) => {
   if (cache.data && Date.now() - cache.at < TTL_MS) return res.json(cache.data);
 
   const [members, completed, openListings] = await Promise.all([
-    User.countDocuments({ isVerified: true }),
+    User.countDocuments(),
     Booking.aggregate([{ $match: { status: S.COMPLETED } }, { $group: { _id: null, sessions: { $sum: 1 }, hours: { $sum: "$creditCost" } } }]),
     Listing.countDocuments({ isActive: true }),
   ]);

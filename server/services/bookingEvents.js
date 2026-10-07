@@ -6,7 +6,7 @@ const { formatDateTime, formatHours } = require("../utils/format");
 const idOf = (ref) => String(ref?._id ?? ref);
 
 const load = async (booking) => {
-  const users = await User.find({ _id: { $in: [idOf(booking.learner), idOf(booking.teacher)] } }).select("name email timezone");
+  const users = await User.find({ _id: { $in: [idOf(booking.learner), idOf(booking.teacher)] } }).select("name timezone");
   const byId = Object.fromEntries(users.map((u) => [String(u._id), u]));
   return {
     learner: byId[idOf(booking.learner)],
@@ -26,7 +26,6 @@ const created = async (booking) => {
     type: "booking.created",
     message: `${c.learner.name} booked ${c.title}. Agree on a time to get it scheduled.`,
     link: c.link,
-    email: "New booking",
   });
 };
 
@@ -47,7 +46,6 @@ const scheduled = async (booking, actorId) => {
     type: "booking.scheduled",
     message: `${actor.name} accepted. ${c.title} is on ${formatDateTime(booking.scheduledAt, to.timezone)}.`,
     link: c.link,
-    email: "Session scheduled",
   });
 };
 
@@ -70,7 +68,6 @@ const completed = async (booking, { auto = false } = {}) => {
       ? `${c.title} with ${c.learner.name} completed automatically. You received ${c.hours}.`
       : `${c.learner.name} confirmed ${c.title}. You received ${c.hours}.`,
     link: "/wallet",
-    email: "Credits received",
   });
   if (auto) {
     await notify(c.learner, {
@@ -87,7 +84,6 @@ const disputed = async (booking) => {
     type: "booking.disputed",
     message: `${c.learner.name} reported a problem with ${c.title}. The credits stay frozen until it's reviewed.`,
     link: c.link,
-    email: "A problem was reported",
   });
 };
 
@@ -95,8 +91,8 @@ const resolved = async (booking, outcome) => {
   const c = await load(booking);
   const toTeacher = outcome === "release" ? `The report on ${c.title} was reviewed. You received ${c.hours}.` : `The report on ${c.title} was reviewed. The ${c.hours} went back to ${c.learner.name}.`;
   const toLearner = outcome === "release" ? `Your report on ${c.title} was reviewed. The ${c.hours} went to ${c.teacher.name}.` : `Your report on ${c.title} was reviewed. Your ${c.hours} is back in your balance.`;
-  await notify(c.teacher, { type: "booking.resolved", message: toTeacher, link: c.link, email: "Report reviewed" });
-  await notify(c.learner, { type: "booking.resolved", message: toLearner, link: c.link, email: "Report reviewed" });
+  await notify(c.teacher, { type: "booking.resolved", message: toTeacher, link: c.link });
+  await notify(c.learner, { type: "booking.resolved", message: toLearner, link: c.link });
 };
 
 module.exports = { created, proposed, scheduled, cancelled, completed, disputed, resolved };

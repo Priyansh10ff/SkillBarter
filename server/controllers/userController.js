@@ -54,7 +54,7 @@ const LEADERBOARDS = {
 
 const getLeaderboard = async (req, res) => {
   const board = LEADERBOARDS[req.valid.query.sort];
-  const users = await User.find({ isVerified: true, ...board.filter })
+  const users = await User.find(board.filter)
     .sort(board.sort)
     .limit(20)
     .select("name stats badges rating ratingCount");
@@ -63,7 +63,7 @@ const getLeaderboard = async (req, res) => {
 
 // GET /api/users/:id  (public profile, no email)
 const getPublicProfile = async (req, res) => {
-  const user = await User.findOne({ _id: req.valid.params.id, isVerified: true }).select(PUBLIC_FIELDS);
+  const user = await User.findById(req.valid.params.id).select(PUBLIC_FIELDS);
   if (!user) throw new AppError(404, "Member not found");
 
   const listings = await Listing.find({ teacher: user._id, isActive: true }).sort({ createdAt: -1 });

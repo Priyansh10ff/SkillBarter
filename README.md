@@ -21,7 +21,7 @@ Needs Node 22+ and a MongoDB replica set (an Atlas free cluster works).
 ```bash
 # API
 cd server
-cp .env.example .env      # fill in MONGO_URI and JWT_SECRET; leave EMAIL_* empty to print emails in the terminal
+cp .env.example .env      # fill in MONGO_URI and JWT_SECRET
 npm install
 npm run seed              # optional: 6 demo accounts, password "password123"
 npm run dev               # http://localhost:5000

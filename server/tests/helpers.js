@@ -36,13 +36,12 @@ const stopDb = async () => {
 const clearDb = () => Promise.all(Object.values(mongoose.models).map((model) => model.deleteMany({})));
 
 let counter = 0;
-const createUser = async ({ name, verified = true, role = "user" } = {}) => {
+const createUser = async ({ name, role = "user" } = {}) => {
   counter += 1;
   const user = await User.create({
     name: name || `User ${counter}`,
     email: `user${counter}@example.com`,
     password: await bcrypt.hash("password123", 4),
-    isVerified: verified,
     role,
   });
   await runInTransaction((session) => grantSignupBonus(user._id, session));

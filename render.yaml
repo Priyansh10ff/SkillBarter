@@ -22,10 +22,6 @@ services:
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 7d
-      - key: EMAIL_USER
-        sync: false
-      - key: EMAIL_PASS
-        sync: false
       - key: TURN_URL
         sync: false
       - key: TURN_USERNAME

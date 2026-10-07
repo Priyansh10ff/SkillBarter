@@ -34,7 +34,7 @@ Professional tutoring businesses, paid coaching, or anyone looking to earn money
 
 ## How it works
 
-1. **Sign up and verify your email.** You get 2 starting credits.
+1. **Sign up.** You get 2 starting credits.
 2. **Fill in your profile.** Skills you can teach, skills you want to learn, the hours you are usually free.
 3. **Post a listing** for something you can teach, with a length of 30, 60, 90 or 120 minutes. Cost is 1 credit per hour (30 minutes = 0.5 credits).
 4. **Find something to learn.** Browse and search listings, or check the suggestions built from the skills you want and the skills other people want from you.
@@ -49,8 +49,8 @@ If a booking is declined or cancelled before the session, the held credits go ba
 ## Core features
 
 **Accounts and trust**
-- Email and password sign up with email verification and disposable email blocking
-- Password reset by email
+- Email and password sign up with disposable email blocking
+- Password change from settings (logs out other sessions)
 - Public profiles with bio, skills offered and wanted, availability, rating, reviews, badges and session stats
 
 **Listings and discovery**
@@ -79,7 +79,6 @@ If a booking is declined or cancelled before the session, the held credits go ba
 
 **Notifications**
 - Real-time in-app notifications with a bell and history
-- Emails for the important moments: new booking request, time accepted, credits received
 
 ## Principles
 
@@ -105,7 +104,7 @@ If a booking is declined or cancelled before the session, the held credits go ba
 | Backend | Node.js, Express 5, Socket.IO |
 | Database | MongoDB Atlas with Mongoose |
 | Real-time video | WebRTC through PeerJS, with a self-hosted PeerServer |
-| Auth | JWT, bcrypt password hashing, email verification with Nodemailer |
+| Auth | JWT, bcrypt password hashing |
 | Hosting | Vercel (client), Render (server), MongoDB Atlas (database) |
 
 Full technical details are in [TECHNICAL.md](./TECHNICAL.md).

@@ -26,7 +26,6 @@ const barterMatches = async (user, limit = 6) => {
 
   const candidates = await User.find({
     _id: { $ne: user._id },
-    isVerified: true,
     skillsOffered: { $in: user.skillsRequested },
     skillsRequested: { $in: user.skillsOffered },
   })

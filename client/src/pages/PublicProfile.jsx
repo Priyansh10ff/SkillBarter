@@ -30,7 +30,7 @@ const PublicProfile = () => {
   if (error) {
     return (
       <EmptyState title={error} action={<Button to="/">Browse sessions</Button>}>
-        The link may be wrong, or the account isn't verified yet.
+        The link may be wrong, or the account no longer exists.
       </EmptyState>
     );
   }

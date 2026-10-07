@@ -80,8 +80,6 @@ const getById = async (bookingId, userId) => {
 };
 
 const create = async ({ learner, listingId, proposedDate }) => {
-  if (!learner.isVerified) throw new AppError(403, "Verify your email before booking");
-
   const listing = await Listing.findById(listingId);
   if (!listing || !listing.isActive) throw new AppError(404, "Listing not found");
   if (idOf(listing.teacher) === idOf(learner._id)) throw new AppError(400, "You can't book your own listing");

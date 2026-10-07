@@ -15,10 +15,4 @@ const login = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-const emailOnly = z.object({ email });
-
-const tokenParam = z.object({ token: z.string().regex(/^[a-f\d]{64}$/i, "This link is invalid or has expired") });
-
-const resetPassword = z.object({ password });
-
-module.exports = { register, login, emailOnly, tokenParam, resetPassword, password };
+module.exports = { register, login, password };

@@ -1,6 +1,6 @@
 # Deploying Skill Barter
 
-Three pieces: the **client** on Vercel, the **API** on Render, the **database** on MongoDB Atlas. Email goes through Gmail SMTP.
+Three pieces: the **client** on Vercel, the **API** on Render, the **database** on MongoDB Atlas.
 
 ```
 browser ──► Vercel (static client)
@@ -28,15 +28,7 @@ Because each needs the other's URL, deploy in this order: Atlas → Render → V
 4. Copy the connection string:
    `mongodb+srv://<user>:<password>@<cluster>.mongodb.net/skillbarter?retryWrites=true&w=majority`
 
-## 2. Email: Gmail app password
-
-1. Turn on 2-step verification for the Gmail account that will send mail.
-2. Create an app password at https://myaccount.google.com/apppasswords.
-3. Use the account as `EMAIL_USER` and the 16-character app password as `EMAIL_PASS`.
-
-Without these the server still runs, but emails (including verification links) are only printed to the Render logs, so set them before real users sign up.
-
-## 3. API: Render
+## 2. API: Render
 
 1. Render → **New → Blueprint** → pick the GitHub repo. It reads `render.yaml`: root dir `server`, build `npm ci --omit=dev`, start `npm start`, health check `/health`, Node 22.
 2. Fill in what it asks for:
@@ -44,8 +36,7 @@ Without these the server still runs, but emails (including verification links) a
    | Key | Value |
    |---|---|
    | `MONGO_URI` | Atlas connection string |
-   | `EMAIL_USER` / `EMAIL_PASS` | Gmail address + app password |
-   | `CLIENT_URL` | `http://localhost:5173` for now; you'll replace it in step 5 |
+   | `CLIENT_URL` | `http://localhost:5173` for now; you'll replace it in step 4 |
    | `TURN_*` | leave empty unless you have a TURN provider (see below) |
 
    `JWT_SECRET` is generated for you. `PORT` is set by Render.
@@ -56,16 +47,16 @@ Render's free tier sleeps after ~15 idle minutes; the first request after that t
 
 **TURN (optional).** Video works peer to peer with public STUN on most networks. Strict corporate or campus networks may need a TURN relay (Metered, Twilio, or your own coturn); put its URL and credentials in the three `TURN_*` variables.
 
-## 4. Client: Vercel
+## 3. Client: Vercel
 
 1. Vercel → **Add New → Project** → import the repo.
 2. **Root Directory**: `client`. Framework preset **Vite** (build `npm run build`, output `dist`).
-3. **Environment Variables**: `VITE_SERVER_URL` = the Render URL from step 3.3 (no trailing slash).
+3. **Environment Variables**: `VITE_SERVER_URL` = the Render URL from step 2.3 (no trailing slash).
 4. Deploy. Copy the production URL, e.g. `https://skill-barter.vercel.app`.
 
 `VITE_SERVER_URL` is baked in at build time: if you change it later, redeploy.
 
-## 5. Connect them
+## 4. Connect them
 
 1. Render → your service → **Environment** → set `CLIENT_URL` to the Vercel URL, exactly (`https://…`, no trailing slash).
 2. Save. Render redeploys on its own.
@@ -73,26 +64,26 @@ Render's free tier sleeps after ~15 idle minutes; the first request after that t
 
 If you add a custom domain later, put that domain in `CLIENT_URL` instead.
 
-## 6. After the first deploy
+## 5. After the first deploy
 
-1. Sign up with your own email, verify, finish onboarding.
+1. Sign up with your own email and finish onboarding.
 2. Make yourself an admin so you can resolve reported problems. With `MONGO_URI` pointing at production in `server/.env`:
    ```bash
    cd server
    npm run make-admin -- you@example.com
    ```
 3. Smoke test with two accounts (two browsers):
-   - [ ] sign up → verification email arrives → link logs you in → onboarding
+   - [ ] sign up → logged straight in → onboarding
    - [ ] post a skill; it appears on the landing board and in search
    - [ ] book it from the other account; balances show `held`
    - [ ] propose and accept a time ~6 minutes ahead; both get notifications
    - [ ] join the room from both; video connects, whiteboard and chat sync
-   - [ ] confirm the session; teacher receives the hours (wallet + email)
+   - [ ] confirm the session; teacher receives the hours (wallet + notification)
    - [ ] both leave reviews; rating and badges update
 
 `npm run seed` and `npm run reset` refuse to run with `NODE_ENV=production`.
 
-## 7. Rolling back
+## 6. Rolling back
 
 - **Client**: Vercel → Deployments → previous deployment → *Promote*.
 - **API**: Render → Deploys → previous deploy → *Rollback*, or revert the commit.

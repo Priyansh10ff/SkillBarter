@@ -13,12 +13,11 @@ describe("users", () => {
     const res = await request(h.app)
       .put("/api/users/me")
       .set(auth)
-      .send({ bio: "Hi", skillsRequested: ["Figma"], timezone: "Asia/Kolkata", timeCredits: 999, role: "admin", isVerified: false });
+      .send({ bio: "Hi", skillsRequested: ["Figma"], timezone: "Asia/Kolkata", timeCredits: 999, role: "admin" });
     assert.equal(res.status, 200);
     assert.deepEqual(res.body.skillsRequested, ["figma"]);
     assert.equal(res.body.timeCredits, 2);
     assert.equal(res.body.role, "user");
-    assert.equal(res.body.isVerified, true);
 
     assert.equal((await request(h.app).put("/api/users/me").set(auth).send({ timezone: "Mars/Base" })).status, 400);
     assert.equal((await request(h.app).put("/api/users/me").set(auth).send({ bio: "x".repeat(501) })).status, 400);
@@ -60,8 +59,7 @@ describe("users", () => {
     assert.equal(res.body.user.timeCredits, undefined);
     assert.equal(res.body.listings.length, 1);
 
-    const unverified = await h.createUser({ verified: false });
-    assert.equal((await request(h.app).get(`/api/users/${unverified.user._id}`)).status, 404);
+    assert.equal((await request(h.app).get(`/api/users/${"a".repeat(24)}`)).status, 404);
     assert.equal((await request(h.app).get("/api/users/not-an-id")).status, 400);
   });
 });

@@ -10,7 +10,6 @@ const path = require("path");
 
 if (require.main === module) {
   require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
-  process.env.EMAIL_DISABLED = "true"; // never email the made-up addresses below
 }
 const env = require("../config/env");
 
@@ -80,7 +79,6 @@ const runSeed = async () => {
       name: p.name,
       email: `${p.key}@example.com`,
       password: hash,
-      isVerified: true,
       onboardedAt: new Date(),
       bio: p.bio,
       timezone: p.tz,

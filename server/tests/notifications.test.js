@@ -6,7 +6,6 @@ const { io: connect } = require("socket.io-client");
 const h = require("./helpers");
 const initSockets = require("../sockets");
 const { setIO } = require("../services/realtime");
-const { outbox } = require("../services/emailService");
 const Notification = require("../models/Notification");
 
 const inHours = (hours) => new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
@@ -37,7 +36,6 @@ describe("notifications, chat and sockets", () => {
   });
   beforeEach(async () => {
     await h.clearDb();
-    outbox.length = 0;
     teacher = await h.createUser({ name: "Teacher" });
     learner = await h.createUser({ name: "Learner" });
     listing = await h.createListing(teacher.user._id, { title: "Guitar basics" });
@@ -46,14 +44,13 @@ describe("notifications, chat and sockets", () => {
   const book = () => request(h.app).post("/api/bookings").set(learner.auth).send({ listingId: String(listing._id) });
   const act = (who, id, action, body = {}) => request(h.app).post(`/api/bookings/${id}/${action}`).set(who.auth).send(body);
 
-  it("booking notifies and emails the teacher; scheduling notifies the proposer", async () => {
+  it("booking notifies the teacher; scheduling notifies the proposer", async () => {
     const { body: booking } = await book();
 
     const list = await request(h.app).get("/api/notifications").set(teacher.auth);
     assert.equal(list.body.unread, 1);
     assert.match(list.body.items[0].message, /Learner booked “Guitar basics”/);
     assert.equal(list.body.items[0].link, `/bookings#${booking._id}`);
-    assert.equal(outbox.filter((m) => m.to === teacher.user.email).length, 1);
 
     await act(learner, booking._id, "propose", { date: inHours(24) });
     await act(teacher, booking._id, "accept");

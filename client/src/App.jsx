@@ -12,12 +12,9 @@ import { PageLoader } from "./components/layout/PageLoader";
 const Home = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Welcome = lazy(() => import("./pages/Welcome"));
 const Settings = lazy(() => import("./pages/Settings"));
 const PublicProfile = lazy(() => import("./pages/PublicProfile"));
-const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const CreateListing = lazy(() => import("./pages/CreateListing"));
 const EditListing = lazy(() => import("./pages/EditListing"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
@@ -40,9 +37,6 @@ const App = () => (
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/verify-email/:token" element={<VerifyEmail />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/u/:id" element={<PublicProfile />} />
               <Route path="/listings/:id" element={<ListingDetail />} />

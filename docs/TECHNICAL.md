@@ -21,13 +21,13 @@ How the system is built: architecture, stack, folder structure, data model, cred
                          │  Socket.IO         /socket.io
                          │  PeerServer        /peerjs│  (WebRTC signalling only)
                          │  Auto-release job         │
-                         └──────┬─────────────┬──────┘
-                                │             │ SMTP
-                                ▼             ▼
-                      ┌────────────────┐  ┌──────────┐
-                      │ MongoDB Atlas  │  │  Gmail   │
-                      │ (replica set)  │  │ (email)  │
-                      └────────────────┘  └──────────┘
+                         └──────┬────────────────────┘
+                                │
+                                ▼
+                      ┌────────────────┐
+                      │ MongoDB Atlas  │
+                      │ (replica set)  │
+                      └────────────────┘
 ```
 
 - One Node process serves the REST API, Socket.IO and the PeerJS signalling server on the same HTTP server and port.
@@ -66,7 +66,6 @@ How the system is built: architecture, stack, folder structure, data model, cred
 | WebRTC signalling | `peer` (ExpressPeerServer) |
 | Auth | jsonwebtoken, bcryptjs |
 | Validation | zod |
-| Email | Nodemailer (Gmail SMTP with app password) |
 | Email checks | disposable-email-domains |
 | Security | helmet, cors, express-rate-limit |
 | Performance / logs | compression, morgan |
@@ -137,9 +136,6 @@ SkillBarter/
 │           ├── Leaderboard.jsx
 │           ├── Login.jsx
 │           ├── Register.jsx
-│           ├── VerifyEmail.jsx
-│           ├── ForgotPassword.jsx
-│           ├── ResetPassword.jsx
 │           ├── NotFound.jsx
 │           └── StyleGuide.jsx    /dev/ui, development builds only
 │
@@ -181,8 +177,7 @@ SkillBarter/
     │   ├── bookingService.js     Booking state machine
     │   ├── badgeService.js       Milestone badge awards
     │   ├── matchService.js       Suggested listings and barter matches
-    │   ├── notificationService.js Persist + emit + email
-    │   └── emailService.js       Nodemailer templates
+    │   └── notificationService.js Persist + emit
     ├── sockets/
     │   ├── index.js              JWT handshake auth, personal rooms
     │   └── roomHandlers.js       Session room: join, presence, whiteboard
@@ -228,9 +223,6 @@ All documents have `createdAt` / `updatedAt`.
 | rating / ratingCount | Number | running average of received reviews |
 | badges | [{ code, name, dateEarned }] | awarded by `badgeService`: First lesson, Taught ×5/×10/×25, Learned ×5/×10, Both sides, Well rated (4.5+ from 5+ reviews) |
 | role | `user` \| `admin` | |
-| isVerified | Boolean | |
-| verificationToken / verificationExpires | String / Date | SHA-256 hash of emailed token, 24h |
-| resetToken / resetExpires | String / Date | SHA-256 hash, 1h |
 
 ### Listing
 | Field | Type | Notes |
@@ -312,7 +304,7 @@ Append-only. For every user, `sum(amount) === timeCredits` must always hold.
 ```
 
 ### Rules
-- **Book**: learner must be verified, cannot book their own listing, listing must be active, balance must cover `creditCost`. Credits move from learner's balance into the booking (`BOOKING_HOLD`).
+- **Book**: learner cannot book their own listing, listing must be active, balance must cover `creditCost`. Credits move from learner's balance into the booking (`BOOKING_HOLD`).
 - **Propose / accept**: either participant can propose a future time. Only the *other* participant can accept it. Accepting sets `scheduledAt`, `endsAt`, `autoReleaseAt` and moves to `SCHEDULED`.
 - **Complete**: only the learner, only from `SCHEDULED`, only after `scheduledAt`. Teacher receives `creditCost` (`SESSION_EARNING`), both stats increment, badges are checked.
 - **Cancel / decline**: from `PENDING`, or from `SCHEDULED` before `scheduledAt`. Learner gets `creditCost` back (`REFUND`).
@@ -332,12 +324,8 @@ Base path `/api`. JSON in and out. Authenticated routes need `Authorization: Bea
 ### Auth — `/api/auth`
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/register` | – | Create account, send verification email |
+| POST | `/register` | – | Create account with 2 credits, returns `{ token, user }` |
 | POST | `/login` | – | Returns `{ token, user }` |
-| GET | `/verify-email/:token` | – | Verify email, returns `{ token, user }` |
-| POST | `/resend-verification` | – | Resend verification email |
-| POST | `/forgot-password` | – | Send reset email (same response whether or not the email exists) |
-| POST | `/reset-password/:token` | – | Set new password |
 
 ### Users — `/api/users`
 | Method | Path | Auth | Purpose |
@@ -445,7 +433,7 @@ Whiteboard events from a socket that hasn't joined that room are ignored. In-roo
 
 - Passwords hashed with bcrypt (cost 10). Password field excluded from queries by default.
 - JWT signed with `JWT_SECRET`, 7-day expiry, sent as a Bearer token. Stored in `localStorage` on the client. The Axios instance logs the user out on any 401.
-- Login is blocked until the email is verified. Verification and reset tokens are random 32-byte values, stored only as SHA-256 hashes, with expiry.
+- Changing the password logs out every other session (tokens issued before `passwordChangedAt` are rejected).
 - Disposable email domains are rejected at registration.
 - Every protected resource checks ownership or participation on the server, never only in the UI.
 - Input validated with zod on every write endpoint; unknown fields are stripped.
@@ -467,9 +455,7 @@ Whiteboard events from a socket that hasn't joined that room are ignored. In-roo
 | `MONGO_URI` | `mongodb+srv://...` | Atlas connection string |
 | `JWT_SECRET` | long random string | |
 | `JWT_EXPIRES_IN` | `7d` | Optional |
-| `CLIENT_URL` | `http://localhost:5173` | CORS origin and links in emails |
-| `EMAIL_USER` | `you@gmail.com` | Gmail sender. Optional outside production: without it, emails (including verification links) are printed to the server console |
-| `EMAIL_PASS` | 16-char app password | |
+| `CLIENT_URL` | `http://localhost:5173` | CORS origin |
 | `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` | optional | TURN relay for WebRTC (e.g. Metered, Twilio, coturn) |
 
 ### `client/.env`
@@ -482,7 +468,7 @@ Whiteboard events from a socket that hasn't joined that room are ignored. In-roo
 ```bash
 # 1. Server
 cd server
-cp .env.example .env        # fill in MONGO_URI, JWT_SECRET, EMAIL_*
+cp .env.example .env        # fill in MONGO_URI, JWT_SECRET
 npm install
 npm run seed                # optional demo data
 npm run dev                 # http://localhost:5000
@@ -528,7 +514,6 @@ To test a session room locally, log in as the learner and the teacher in two dif
 | Client | Vercel | Root `client`, framework Vite, build `npm run build`, output `dist`. `vercel.json` sends every route to `index.html` and adds cache and security headers. `VITE_SERVER_URL` is set in the dashboard. |
 | Server | Render (web service) | Root `server`, build `npm install`, start `npm start`, health check `/health`. Env vars from section 10. `render.yaml` describes the service. |
 | Database | MongoDB Atlas | Replica set cluster (any tier, including free M0), database `skillbarter`, network access for Render. |
-| Email | Gmail SMTP | Account with 2FA and an app password. |
 
 Notes:
 - The client calls the Render URL from `VITE_SERVER_URL` directly for REST, Socket.IO and PeerJS. The server only accepts that origin when it equals `CLIENT_URL`.

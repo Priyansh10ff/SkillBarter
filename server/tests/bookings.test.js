@@ -47,11 +47,8 @@ describe("bookings and credits", () => {
     await h.assertLedgerConsistent();
   });
 
-  it("rejects self-booking, unverified users, missing listings and empty wallets", async () => {
+  it("rejects self-booking, missing listings and empty wallets", async () => {
     assert.equal((await book(teacher)).status, 400);
-
-    const unverified = await h.createUser({ verified: false });
-    assert.equal((await book(unverified)).status, 403);
 
     assert.equal((await request(h.app).post("/api/bookings").set(learner.auth).send({ listingId: "a".repeat(24) })).status, 404);
 

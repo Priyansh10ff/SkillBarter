@@ -121,11 +121,9 @@ describe("matching", () => {
     const me = await h.createUser({ name: "Me" });
     const swap = await h.createUser({ name: "Swap" });
     const oneWay = await h.createUser({ name: "One way" });
-    const unverified = await h.createUser({ name: "Unverified", verified: false });
     await setSkills(me.user, ["react", "chess"], ["guitar"]);
     await setSkills(swap.user, ["guitar", "piano"], ["react"]);
     await setSkills(oneWay.user, ["guitar"], ["figma"]);
-    await setSkills(unverified.user, ["guitar"], ["react"]);
 
     const res = await request(h.app).get("/api/users/matches").set(me.auth);
     assert.equal(res.status, 200);

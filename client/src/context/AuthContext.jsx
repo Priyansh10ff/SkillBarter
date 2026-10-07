@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
   }, [logout]);
 
-  // Stores a session returned by login, email verification or password reset
+  // Stores a session returned by login, sign-up or a password change
   const loginWithToken = useCallback((token, nextUser) => {
     localStorage.setItem(TOKEN_KEY, token);
     if (nextUser) setUser(nextUser);
@@ -56,10 +56,14 @@ export const AuthProvider = ({ children }) => {
     [loginWithToken]
   );
 
-  const register = useCallback(async (name, email, password, skills) => {
-    const { data } = await api.post("/api/auth/register", { name, email, password, skills });
-    return data;
-  }, []);
+  const register = useCallback(
+    async (name, email, password, skills) => {
+      const { data } = await api.post("/api/auth/register", { name, email, password, skills });
+      loginWithToken(data.token, data.user);
+      return data.user;
+    },
+    [loginWithToken]
+  );
 
   // Saves profile fields and keeps the local user in sync
   const updateProfile = useCallback(async (fields) => {
