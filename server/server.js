@@ -22,6 +22,9 @@ const start = async () => {
 
   server.listen(env.PORT, () => {
     console.log(`Server running on port ${env.PORT} (${env.NODE_ENV})`);
+    if (env.NODE_ENV === "production" && !(env.EMAIL_USER && env.EMAIL_PASS)) {
+      console.warn("EMAIL_USER / EMAIL_PASS not set: emails (including verification links) are printed to these logs instead of sent.");
+    }
   });
 
   const job = startAutoReleaseJob();

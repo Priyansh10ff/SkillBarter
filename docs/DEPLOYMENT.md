@@ -34,7 +34,7 @@ Because each needs the other's URL, deploy in this order: Atlas → Render → V
 2. Create an app password at https://myaccount.google.com/apppasswords.
 3. Use the account as `EMAIL_USER` and the 16-character app password as `EMAIL_PASS`.
 
-Production refuses to start without these, because sign-up depends on the verification email.
+Without these the server still runs, but emails (including verification links) are only printed to the Render logs, so set them before real users sign up.
 
 ## 3. API: Render
 

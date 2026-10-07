@@ -23,11 +23,6 @@ const schema = z
     TURN_URL: optional,
     TURN_USERNAME: optional,
     TURN_CREDENTIAL: optional,
-  })
-  .superRefine((env, ctx) => {
-    if (env.NODE_ENV === "production" && (!env.EMAIL_USER || !env.EMAIL_PASS)) {
-      ctx.addIssue({ code: "custom", path: ["EMAIL_USER"], message: "EMAIL_USER and EMAIL_PASS are required in production" });
-    }
   });
 
 const parsed = schema.safeParse(process.env);
