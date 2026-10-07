@@ -9,19 +9,15 @@ if (env.NODE_ENV === "production") {
 }
 
 const mongoose = require("mongoose");
-const User = require("../models/User");
-const Listing = require("../models/Listing");
-const Booking = require("../models/Booking");
-const CreditEntry = require("../models/CreditEntry");
 
 const reset = async () => {
   try {
     require("../config/db").applyDnsServers();
     await mongoose.connect(env.MONGO_URI);
-    await Promise.all([User, Listing, Booking, CreditEntry].map((model) => model.deleteMany({})));
-    // collection left over from the old Transaction model
-    await mongoose.connection.db.dropCollection("transactions").catch(() => {});
-    console.log("Database cleared.");
+    // Empties every collection but keeps them (and their indexes)
+    const collections = await mongoose.connection.db.collections();
+    await Promise.all(collections.map((c) => c.deleteMany({})));
+    console.log(`Database "${mongoose.connection.name}" cleared (${collections.length} collections).`);
     process.exit(0);
   } catch (error) {
     console.error(`Reset failed: ${error.message}`);
