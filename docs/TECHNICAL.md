@@ -1,6 +1,8 @@
 # Skill Barter: Technical Reference
 
-How the system is built: architecture, stack, folder structure, data model, credit logic, API, real-time events, security, configuration and deployment. For the product side (why, for whom, what it does) see [PRODUCT.md](./PRODUCT.md).
+How the system is built: architecture, stack, folder structure, data model, the credit ledger and booking state machine, REST API, real-time events, the video room, security, configuration, testing and known limitations.
+
+Related: [PRODUCT.md](./PRODUCT.md) (overview) · [PRD.md](./PRD.md) (requirements) · [DESIGN.md](./DESIGN.md) (interface) · [DEPLOYMENT.md](./DEPLOYMENT.md) (hosting)
 
 ---
 
@@ -11,28 +13,29 @@ How the system is built: architecture, stack, folder structure, data model, cred
                          │      Browser (React SPA)     │
                          │  Vercel: static build + CDN  │
                          └──────┬─────────┬─────────┬───┘
-                 HTTPS /api/*   │         │ WSS     │ WebRTC media (peer to peer)
-        (direct to the API)     │         │         │  ┌─────────────────────────┐
-                                ▼         ▼         └─►│  Other participant's     │
-                         ┌──────────────────────────┐  │  browser                 │
-                         │  Node.js server (Render)  │  └─────────────────────────┘
+               HTTPS /api/*     │         │ WSS     │ WebRTC media (peer to peer)
+         (Bearer token)         │         │         │  ┌─────────────────────────┐
+                                ▼         ▼         └─►│ Other participant's     │
+                         ┌───────────────────────────┐ │ browser                 │
+                         │  Node.js server (Render)  │ └─────────────────────────┘
                          │                           │
                          │  Express REST API  /api   │
-                         │  Socket.IO         /socket.io
-                         │  PeerServer        /peerjs│  (WebRTC signalling only)
-                         │  Auto-release job         │
-                         └──────┬────────────────────┘
-                                │
-                                ▼
-                      ┌────────────────┐
-                      │ MongoDB Atlas  │
-                      │ (replica set)  │
-                      └────────────────┘
+                         │  Socket.IO     /socket.io │
+                         │  PeerServer       /peerjs │  (WebRTC signalling only)
+                         │  Auto-release cron job    │
+                         └─────────────┬─────────────┘
+                                       │ Mongoose (transactions)
+                                       ▼
+                             ┌──────────────────┐
+                             │  MongoDB Atlas   │
+                             │  (replica set)   │
+                             └──────────────────┘
 ```
 
-- One Node process serves the REST API, Socket.IO and the PeerJS signalling server on the same HTTP server and port.
-- Video and audio go directly between the two browsers over WebRTC. The server only brokers the connection.
-- MongoDB Atlas runs as a replica set, which allows multi-document transactions. Every credit movement uses one. A plain standalone local `mongod` will not work; use Atlas (free M0 is fine) or a local single-node replica set.
+- **One Node process, one port.** It serves the REST API, Socket.IO and the PeerJS signalling server, and runs the auto-release job.
+- **Media never touches the server.** Video, audio and screen share go directly between the two browsers over WebRTC. The server only helps them find each other.
+- **A replica set is required.** Every credit movement is a multi-document transaction, which MongoDB only supports on replica sets. Atlas clusters, including the free M0, are replica sets. A standalone local `mongod` is not.
+- **Layering on the server:** `routes → validate (zod) → controller → service → model`. Controllers stay thin. Business rules live in `services/`, and `creditService` is the only code allowed to change a balance.
 
 ## 2. Stack
 
@@ -41,167 +44,141 @@ How the system is built: architecture, stack, folder structure, data model, cred
 | Concern | Library |
 |---|---|
 | UI | React 19 |
-| Build / dev server | Vite |
-| Styling | Tailwind CSS 3, PostCSS, Autoprefixer |
-| Routing | React Router 7 |
-| HTTP | Axios (single configured instance) |
+| Build / dev server | Vite 5 (dev proxy `/api` → `localhost:5000`) |
+| Styling | Tailwind CSS 3 with CSS-variable design tokens (see [DESIGN.md](./DESIGN.md)) |
+| Routing | React Router 7, every page lazy-loaded |
+| HTTP | Axios, one instance with the token interceptor and 401 handling |
 | Real-time | socket.io-client |
 | Video | PeerJS (WebRTC) |
-| Fonts | Instrument Sans + JetBrains Mono, self-hosted via @fontsource |
-| Dialogs | Native `<dialog>` wrapped in `ui/Dialog` and `useConfirm()` |
-| Charts | Recharts (wallet history) |
-| Dates | dayjs |
-| Icons | lucide-react |
-| Toasts | react-hot-toast |
-| Linting | ESLint 9 with react-hooks and react-refresh plugins |
+| Fonts | Instrument Sans and JetBrains Mono, self-hosted via `@fontsource` |
+| Dialogs | Native `<dialog>` wrapped in `ui/Dialog`, plus a `useConfirm()` hook |
+| Charts | Hand-written SVG (`wallet/BalanceChart`), no chart library |
+| Dates | dayjs (relativeTime, advancedFormat), times shown in the viewer's timezone through `Intl` |
+| Icons / toasts | lucide-react, react-hot-toast |
+| Linting | ESLint 9 with react-hooks and react-refresh |
 
 ### Server (`server/`)
 
 | Concern | Library |
 |---|---|
 | Runtime | Node.js 22+ (CommonJS) |
-| HTTP framework | Express 5 |
+| HTTP | Express 5 (async errors reach the error handler automatically) |
 | Database | MongoDB with Mongoose 9 |
 | Real-time | Socket.IO 4 |
 | WebRTC signalling | `peer` (ExpressPeerServer) |
 | Auth | jsonwebtoken, bcryptjs |
-| Validation | zod |
-| Email checks | disposable-email-domains |
+| Validation | zod 4, for request bodies, queries and params, and for environment variables |
+| Sign-up checks | disposable-email-domains |
 | Security | helmet, cors, express-rate-limit |
 | Performance / logs | compression, morgan |
 | Scheduled job | node-cron |
-| Tests | node:test (built in), supertest, mongodb-memory-server (replica set mode) |
+| Tests | `node:test`, supertest, mongodb-memory-server (replica set), socket.io-client |
 | Dev | nodemon |
-
-Not used: Stripe (the product has no payments), the `crypto` npm package (Node's built-in `crypto` is used), moment (replaced by dayjs).
 
 ## 3. Repository structure
 
 ```
 SkillBarter/
-├── README.md                     Short intro + quick start
-├── render.yaml                   Render blueprint for the server
-├── .gitignore
+├── README.md
+├── CONTRIBUTING.md
+├── SECURITY.md
+├── render.yaml                    Render blueprint for the API
 ├── docs/
-│   ├── PRODUCT.md                Product overview: why, who, features
-│   ├── TECHNICAL.md              This file
-│   └── DEPLOYMENT.md             Step-by-step deploy guide
+│   ├── PRODUCT.md                 Why, who, how it works
+│   ├── PRD.md                     Goals, user stories, requirements, roadmap, risks
+│   ├── TECHNICAL.md               This file
+│   ├── DESIGN.md                  Design system
+│   └── DEPLOYMENT.md              Atlas → Render → Vercel
 │
 ├── client/
 │   ├── index.html
-│   ├── vite.config.js            Dev proxy /api → localhost:5000
-│   ├── tailwind.config.js
-│   ├── postcss.config.js
-│   ├── eslint.config.js
-│   ├── vercel.json               SPA fallback + cache and security headers
-│   ├── .env.development          Local URLs (no secrets)
-│   ├── .env.production           Production URLs (no secrets)
+│   ├── vite.config.js             Dev proxy /api → :5000
+│   ├── tailwind.config.js         Colours mapped to CSS variables
+│   ├── vercel.json                SPA fallback, cache and security headers
+│   ├── .env.development           VITE_SERVER_URL for local dev
 │   ├── .env.example
-│   ├── public/
+│   ├── public/                    favicon.svg, robots.txt
 │   └── src/
-│       ├── main.jsx              Providers + Toaster
-│       ├── App.jsx               Routes, protected route wrapper
-│       ├── index.css
-│       ├── api/
-│       │   └── client.js         Axios instance: base URL, auth header, 401 handling
-│       ├── context/
-│       │   ├── AuthContext.jsx   User, token, login/register/logout/refresh
-│       │   ├── SocketContext.jsx Authenticated socket connection
-│       │   └── NotificationContext.jsx  Persisted + live notifications
-│       ├── hooks/
-│       │   ├── useBookings.js
-│       │   ├── useListings.js
-│       │   └── usePeerCall.js    WebRTC call lifecycle for the room
+│       ├── main.jsx               Fonts, Toaster, ErrorBoundary
+│       ├── App.jsx                Providers and routes
+│       ├── index.css              Theme tokens, base styles, reduced motion
+│       ├── api/client.js          Axios instance: base URL, Bearer token, 401 → auth:expired
 │       ├── lib/
-│       │   ├── config.js         API and socket URLs from env
-│       │   ├── date.js           dayjs with plugins
-│       │   ├── constants.js      Categories, durations, booking statuses
-│       │   └── format.js         Credits, dates, durations
+│       │   ├── config.js          API and socket URLs from VITE_SERVER_URL
+│       │   ├── constants.js       Categories, durations, statuses
+│       │   ├── date.js            dayjs with plugins
+│       │   └── format.js          Hours, dates, API error helpers
+│       ├── context/
+│       │   ├── AuthContext.jsx    User, login, register, logout, profile updates
+│       │   ├── SocketContext.jsx  One authenticated socket per session
+│       │   ├── NotificationContext.jsx  Stored and live notifications
+│       │   └── ConfirmContext.jsx useConfirm() on a native <dialog>
+│       ├── hooks/                 useBookListing, useDebounced, useDismiss, useElementWidth, useHeldCredits
 │       ├── components/
-│       │   ├── layout/           AppShell, Navbar, UserMenu, NotificationBell, ProtectedRoute
-│       │   ├── ui/               Button, Field/Input/Select/Textarea, Panel, Dialog, Hours, StatusTag, Stamp, Avatar, Segmented, EmptyState, Skeleton
-│       │   ├── listings/         ListingCard, ListingForm, ListingFilters
-│       │   ├── bookings/         BookingCard, ScheduleControls, BookingChat, ReviewForm
-│       │   ├── room/             VideoTile, CallControls, Whiteboard, RoomChat
-│       │   └── auth/             AuthLayout, FormError
-│       └── pages/
-│           ├── Home.jsx          Hero, search, listing grid, suggestions
-│           ├── ListingDetail.jsx
-│           ├── CreateListing.jsx (also used for edit)
-│           ├── Bookings.jsx      All bookings grouped by status
-│           ├── Room.jsx          Session room
-│           ├── Profile.jsx       Own profile editing
-│           ├── PublicProfile.jsx /u/:id
-│           ├── Wallet.jsx        Balance, chart, ledger history
-│           ├── Leaderboard.jsx
-│           ├── Login.jsx
-│           ├── Register.jsx
-│           ├── NotFound.jsx
-│           └── StyleGuide.jsx    /dev/ui, development builds only
+│       │   ├── ui/                Button, Field/Input/Select/Textarea, Panel, Dialog, Hours, StatusTag,
+│       │   │                      Stamp, Avatar, Segmented, SkillInput, TimezoneSelect, Skeleton, …
+│       │   ├── layout/            AppShell, Navbar, UserMenu, NotificationBell, Footer,
+│       │   │                      ProtectedRoute, PageLoader, ErrorBoundary
+│       │   ├── landing/           ExchangeBoard, CommunityStats, HowItWorks
+│       │   ├── listings/          ListingRow, ListingForm, BookingSummary, BarterMatches
+│       │   ├── bookings/          BookingTrack, BookingChat, ReviewDialog
+│       │   ├── room/              VideoTile, Whiteboard, SessionTimer, useLocalMedia, usePeerCall
+│       │   ├── profile/           ProfileParts, ReviewList
+│       │   ├── wallet/            BalanceChart
+│       │   └── auth/              AuthLayout, FormError
+│       └── pages/                 Home, Login, Register, Welcome, Settings, Profile, PublicProfile,
+│                                  CreateListing, EditListing, ListingDetail, Bookings, Room, Wallet,
+│                                  Leaderboard, NotFound, StyleGuide (dev only)
 │
 └── server/
-    ├── server.js                 Bootstraps HTTP server, Express, Socket.IO, PeerServer, job
-    ├── app.js                    Express app (middleware + routes), exported for tests
-    ├── package.json
-    ├── .env.example
+    ├── server.js                  HTTP server, sockets, PeerServer, cron, graceful shutdown
+    ├── app.js                     Express app (middleware + routes), exported for tests
     ├── config/
-    │   ├── db.js                 Mongoose connection
-    │   ├── corsOrigins.js        Allowed origins for API and sockets
-    │   └── env.js                Validated environment variables (zod)
-    ├── models/
-    │   ├── User.js
-    │   ├── Listing.js
-    │   ├── Booking.js
-    │   ├── CreditEntry.js
-    │   ├── Review.js
-    │   ├── Message.js
-    │   └── Notification.js       TTL index: removed after 90 days
-    ├── middleware/
-    │   ├── auth.js               protect, requireAdmin
-    │   ├── validate.js           zod request validation
-    │   ├── rateLimit.js
-    │   └── errorHandler.js       notFound + central error handler
-    ├── validators/               zod schemas per resource
-    ├── routes/
-    │   ├── authRoutes.js
-    │   ├── userRoutes.js
-    │   ├── listingRoutes.js
-    │   ├── bookingRoutes.js
-    │   ├── reviewRoutes.js
-    │   ├── walletRoutes.js
-    │   ├── notificationRoutes.js
-    │   └── adminRoutes.js
-    ├── controllers/              One per route file, thin: validate → call service → respond
+    │   ├── env.js                 Environment validated with zod; exits on bad config
+    │   ├── db.js                  Mongoose connection, optional DNS_SERVERS
+    │   ├── corsOrigins.js         Allowed origins for HTTP and sockets
+    │   ├── peerServer.js          PeerServer on a private http.Server, /peerjs upgrades forwarded
+    │   └── constants.js           Signup bonus, windows, categories, durations, statuses, ledger types
+    ├── models/                    User, Listing, Booking, CreditEntry, Review, Message, Notification
+    ├── middleware/                auth (protect, requireAdmin), validate, rateLimit, errorHandler
+    ├── validators/                zod schemas per resource
+    ├── routes/ + controllers/     auth, users, listings, bookings, reviews, wallet, notifications, admin, stats
     ├── services/
-    │   ├── creditService.js      All credit movements (hold, release, refund, bonus)
-    │   ├── bookingService.js     Booking state machine
-    │   ├── badgeService.js       Milestone badge awards
-    │   ├── matchService.js       Suggested listings and barter matches
-    │   └── notificationService.js Persist + emit
+    │   ├── creditService.js       The only code that changes balances; writes the ledger
+    │   ├── bookingService.js      Booking state machine, transactions, auto-release
+    │   ├── bookingEvents.js       Who is notified about each booking change, and what they're told
+    │   ├── roomService.js         Room access window, signed peer IDs, ICE servers
+    │   ├── reviewService.js       Reviews and running rating averages
+    │   ├── badgeService.js        Milestone badges (idempotent)
+    │   ├── matchService.js        Suggested listings and two-way barter matches
+    │   ├── notificationService.js Store + push notifications
+    │   └── realtime.js            Holds the Socket.IO instance; emitToUser()
     ├── sockets/
-    │   ├── index.js              JWT handshake auth, personal rooms
-    │   └── roomHandlers.js       Session room: join, presence, whiteboard
-    ├── jobs/
-    │   └── autoRelease.js        Releases credits 48h after scheduled end
-    ├── utils/
-    │   ├── AppError.js
-    │   ├── asyncHandler.js
-    │   └── tokens.js             JWT + hashed one-time tokens
-    ├── scripts/
-    │   ├── seed.js               Demo users, listings, bookings, reviews
-    │   ├── makeAdmin.js          npm run make-admin -- <email>
-    │   └── resetDb.js            Refuses to run when NODE_ENV=production
-    └── tests/
-        ├── helpers.js            In-memory replica set, fixtures, ledger invariant checks
-        ├── auth.test.js
-        ├── users.test.js         Profile, password change, public profiles
-        ├── listings.test.js      Search, paging, edits, suggestions, barter matches
-        ├── bookings.test.js      Booking flow, credits, disputes, concurrency
-        ├── notifications.test.js Notifications, booking chat, socket auth
-        ├── room.test.js          Room access window, peer IDs, presence, whiteboard relay
-        ├── reviews.test.js       Reviews, rating average, badges, leaderboard, stats
-        └── seed.test.js          The demo seed keeps the ledger consistent
+    │   ├── index.js               JWT handshake auth, user:<id> rooms
+    │   └── roomHandlers.js        Session room presence and whiteboard relay
+    ├── jobs/autoRelease.js        Runs on boot and every 10 minutes
+    ├── utils/                     AppError, tokens (JWT), escapeRegex, format
+    ├── scripts/                   seed, makeAdmin, resetDb
+    └── tests/                     helpers + auth, users, listings, bookings, notifications,
+                                   room, reviews, seed
 ```
+
+### Client routes
+
+| Path | Page | Access |
+|---|---|---|
+| `/` | Landing: hero, live sessions board, community numbers, search, suggestions | Public |
+| `/login`, `/register` | Auth | Public |
+| `/listings/:id` | Listing detail and booking | Public (booking needs login) |
+| `/u/:id` | Public profile | Public |
+| `/leaderboard` | Top teachers | Public |
+| `/welcome` | 3-step onboarding | Logged in |
+| `/create-listing`, `/listings/:id/edit` | Listing form | Logged in (owner for edit) |
+| `/bookings` | All bookings with timeline, scheduling, chat, reviews | Logged in |
+| `/room/:id` | Session room (full screen, outside the app shell) | Participants, inside the window |
+| `/wallet` | Balance, held credits, chart, ledger | Logged in |
+| `/profile`, `/settings` | Own profile; profile fields and password | Logged in |
+| `/dev/ui` | Component style guide | Development builds only |
 
 ## 4. Data model
 
@@ -218,11 +195,13 @@ All documents have `createdAt` / `updatedAt`.
 | skillsRequested | [String] | skills the user wants to learn |
 | preferredHours | String | e.g. "Weekdays 6pm–9pm" |
 | timezone | String | IANA name, e.g. `Asia/Kolkata` |
-| timeCredits | Number | available balance, default 2, never below 0 |
+| timeCredits | Number | available balance. Starts at 0 and the signup bonus adds 2 through the ledger. Never below 0 |
 | stats.classesTaught / classesAttended | Number | incremented on completion |
 | rating / ratingCount | Number | running average of received reviews |
 | badges | [{ code, name, dateEarned }] | awarded by `badgeService`: First lesson, Taught ×5/×10/×25, Learned ×5/×10, Both sides, Well rated (4.5+ from 5+ reviews) |
 | role | `user` \| `admin` | |
+| onboardedAt | Date | set when onboarding is finished |
+| passwordChangedAt | Date | `select: false`. Tokens issued before it are rejected |
 
 ### Listing
 | Field | Type | Notes |
@@ -319,7 +298,7 @@ Append-only. For every user, `sum(amount) === timeCredits` must always hold.
 
 ## 6. REST API
 
-Base path `/api`. JSON in and out. Authenticated routes need `Authorization: Bearer <token>`. Errors return `{ message, details? }` with a proper status code.
+Base path `/api`. JSON in and out. Authenticated routes need `Authorization: Bearer <token>`. Errors return `{ message, code?, details? }` with a proper status code (see [section 9](#errors-and-operations)).
 
 ### Auth — `/api/auth`
 | Method | Path | Auth | Purpose |
@@ -404,7 +383,7 @@ The client connects with `io(SOCKET_URL, { auth: { token } })`. The server verif
 |---|---|---|
 | `notification` | Notification document | Any new notification |
 | `credits:update` | `{ timeCredits }` | Balance changed |
-| `booking:update` | Booking document | Status, proposal or schedule changed |
+| `booking:update` | `{ bookingId, status }` | Status, proposal or schedule changed. The client refetches |
 | `message:new` | Message document | New booking or room chat message |
 
 ### Session room
@@ -431,91 +410,122 @@ Whiteboard events from a socket that hasn't joined that room are ignored. In-roo
 
 ## 9. Auth and security
 
-- Passwords hashed with bcrypt (cost 10). Password field excluded from queries by default.
-- JWT signed with `JWT_SECRET`, 7-day expiry, sent as a Bearer token. Stored in `localStorage` on the client. The Axios instance logs the user out on any 401.
-- Changing the password logs out every other session (tokens issued before `passwordChangedAt` are rejected).
-- Disposable email domains are rejected at registration.
-- Every protected resource checks ownership or participation on the server, never only in the UI.
-- Input validated with zod on every write endpoint; unknown fields are stripped.
-- `helmet` for security headers, `cors` restricted to `CLIENT_URL` in production (plus localhost ports in development), `express.json({ limit: "100kb" })`.
-- Rate limits: auth routes 10 requests per 15 minutes per IP; all other API routes 300 per 15 minutes.
-- Central error handler: no stack traces in production responses.
-- Text colours meet WCAG AA (4.5:1) on every surface; pages are checked with axe-core. Focus is always visible, motion respects `prefers-reduced-motion`.
-- A React error boundary replaces a crashed page with a reload screen.
-- The server shuts down cleanly on `SIGTERM` (Render deploys): sockets closed, in-flight requests finished, Mongo disconnected.
-- No secrets in the repo. `.env` files are git-ignored and `.env.example` files list every key.
+### Authentication
+- Passwords are hashed with bcrypt (cost 10). The field is `select: false`, so it is never loaded unless a query asks for it and never serialised.
+- Sign-up and login return a JWT (`{ id }`, signed with `JWT_SECRET`, 7-day expiry by default). The client keeps it in `localStorage` and sends `Authorization: Bearer <token>`.
+- Every authenticated request reloads the user. A token for a deleted user, or one issued before `passwordChangedAt`, gets `401`. Changing the password therefore signs out every other session, and the current one receives a fresh token.
+- On any `401` for a request that carried a token, the Axios instance fires `auth:expired` and `AuthContext` logs out with a toast.
+- Socket.IO connections send the same token in the handshake (`auth: { token }`) and are refused without a valid one.
 
-## 10. Environment variables
+### Authorisation
+- Bookings, booking chat, rooms and reviews are only available to the booking's learner and teacher. To anyone else they look missing (`404`).
+- Listing edits and removal are owner only (`403`). Admin routes need `role: "admin"`, granted with `npm run make-admin`.
+- Public profiles, leaderboards and matches select explicit public fields, never email or balance.
+
+### Input and transport
+- Every body, query and params object is validated with zod (`middleware/validate.js`). Unknown fields are stripped, so a client can't set `timeCredits`, `role` or `rating`.
+- Search input is regex-escaped before it reaches MongoDB.
+- `helmet` security headers, `compression`, `express.json({ limit: "100kb" })`.
+- CORS and Socket.IO accept only `CLIENT_URL` in production, and also `localhost:5173` and `:3000` in development.
+- `trust proxy` is set to 1 so rate limits see the real client IP behind Render.
+- Rate limits per IP: **20 requests / 15 min** on `/api/auth/*` and password change, **300 / 15 min** on the rest of `/api`.
+- Disposable email domains are rejected at sign-up.
+
+### Errors and operations
+- Errors are returned as `{ message, code?, details? }` with the right status. `details` lists field errors for forms. `code` is a machine-readable string such as `ROOM_NOT_OPEN`.
+- Mongoose cast, duplicate-key and validation errors map to `400` or `409`. Stack traces and 5xx messages are hidden in production.
+- `/health` returns `200 { status: "ok", db: "connected" }` or `503` when the database is down.
+- On `SIGTERM` (Render deploys) the server stops the cron job, closes sockets and the HTTP server, and disconnects Mongo.
+- No secrets are in the repo. `.env` files are git-ignored, and each app has a `.env.example`.
+
+### Client
+- WCAG AA contrast on every surface, checked with axe-core. Visible focus, labelled fields, `role="alert"` on form errors, and reduced motion respected.
+- An error boundary replaces a crashed page with a reload screen.
+- `vercel.json` sets `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy` and a `Permissions-Policy` that allows camera, microphone and screen capture only on the app's own origin.
+
+## 10. Configuration
 
 ### `server/.env`
-| Key | Example | Purpose |
-|---|---|---|
-| `NODE_ENV` | `development` | |
-| `PORT` | `5000` | |
-| `MONGO_URI` | `mongodb+srv://...` | Atlas connection string |
-| `JWT_SECRET` | long random string | |
-| `JWT_EXPIRES_IN` | `7d` | Optional |
-| `CLIENT_URL` | `http://localhost:5173` | CORS origin |
-| `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` | optional | TURN relay for WebRTC (e.g. Metered, Twilio, coturn) |
 
-### `client/.env`
-| Key | Example | Purpose |
-|---|---|---|
-| `VITE_SERVER_URL` | `http://localhost:5000` / `https://<render-app>.onrender.com` | The API server, for REST, Socket.IO and PeerServer. In development REST goes through the Vite proxy; in production the client calls it directly. Set in the Vercel dashboard |
+| Key | Required | Default | Purpose |
+|---|---|---|---|
+| `MONGO_URI` | ✓ | | MongoDB replica-set connection string. Put the database name before `?`, e.g. `/skillbarter?…` |
+| `JWT_SECRET` | ✓ | | At least 16 characters (use 64+ random hex). Signs tokens and room peer IDs. Changing it logs everyone out |
+| `NODE_ENV` | | `development` | `production` on Render. Controls CORS, logging and error detail |
+| `PORT` | | `5000` | Render sets it |
+| `CLIENT_URL` | prod | `http://localhost:5173` | Exact client origin, `https://…` with no trailing slash |
+| `JWT_EXPIRES_IN` | | `7d` | Session length |
+| `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` | | | Optional TURN relay added to the ICE servers |
+| `DNS_SERVERS` | | | e.g. `1.1.1.1,8.8.8.8`. Fixes `querySrv ECONNREFUSED` on networks whose DNS can't resolve `mongodb+srv` records. Local use only |
+
+`config/env.js` validates all of this at startup and exits with one line per problem.
+
+### `client/.env*`
+
+| Key | Purpose |
+|---|---|
+| `VITE_SERVER_URL` | The API origin for REST, Socket.IO and PeerJS. In development REST goes through the Vite proxy and sockets use this URL. In production everything uses it. It's baked in at build time, so it's set in the Vercel dashboard and needs a redeploy after a change |
 
 ## 11. Local development
 
 ```bash
-# 1. Server
+# 1. API
 cd server
-cp .env.example .env        # fill in MONGO_URI, JWT_SECRET
+cp .env.example .env        # MONGO_URI, JWT_SECRET
 npm install
-npm run seed                # optional demo data
+npm run seed                # optional demo data (6 members, password "password123")
 npm run dev                 # http://localhost:5000
 
 # 2. Client (new terminal)
 cd client
-npm install                 # .env.development is already set up
-npm run dev                 # http://localhost:5173, /api proxied to :5000
+npm install
+npm run dev                 # http://localhost:5173
 ```
 
-To test a session room locally, log in as the learner and the teacher in two different browsers (or one normal and one private window).
-
-### Scripts
+To test a session room, log in as the learner and the teacher in two browsers (or one normal and one private window). The seed creates scheduled sessions you can open.
 
 | Location | Script | Does |
 |---|---|---|
 | server | `npm run dev` | nodemon |
-| server | `npm start` | production start |
-| server | `npm test` | node:test + supertest against an in-memory replica set |
-| server | `npm run seed` | Demo data through the real services (`-- --reset` wipes first; refuses in production) |
+| server | `npm start` | Production start |
+| server | `npm test` | All API tests |
+| server | `npm run seed` | Demo data through the real services (`-- --reset` empties first). Refuses in production |
 | server | `npm run make-admin -- <email>` | Grants the admin role |
-| server | `npm run reset` | Wipe database (blocked in production) |
-| client | `npm run dev` | Vite dev server |
-| client | `npm run build` | Production build to `dist/` |
+| server | `npm run reset` | Empties every collection (keeps indexes). Refuses in production |
+| client | `npm run dev` / `build` / `preview` | Vite |
 | client | `npm run lint` | ESLint |
-| client | `npm run preview` | Serve the build locally |
 
 ## 12. Testing
 
-- Server tests run against `mongodb-memory-server` in replica set mode, so transactions behave as in Atlas. Tests never touch a real database. The first run downloads a MongoDB binary (~100 MB) into the npm cache.
-- Coverage focus: the booking state machine and the credit ledger.
-- Invariants checked after every booking test:
-  - for each user, the sum of their ledger entries equals `timeCredits`
-  - total credits in balances + total held in open bookings = total ever granted
-  - no balance below 0
-- Concurrency tests fire parallel book / complete / cancel requests and assert credits move exactly once.
-- Client: `npm run lint` and `npm run build` must pass.
+- **Runner:** `node --test` with supertest against the real Express app and Socket.IO server.
+- **Database:** `mongodb-memory-server` in replica-set mode, so transactions behave as on Atlas. The first run downloads a MongoDB binary (~100 MB). Tests never touch a real database.
+- **Suites:** `auth`, `users`, `listings` (search, paging, suggestions, matches), `bookings` (state machine, refunds, disputes, auto-release, concurrency), `notifications` (notifications, chat, socket auth), `room` (access window, peer IDs, presence, whiteboard relay), `reviews` (ratings, badges, leaderboard, stats), `seed` (the demo data keeps the ledger consistent).
+- **Ledger invariants** are checked after every booking test (`helpers.assertLedgerConsistent`):
+  1. For each user, the sum of their `CreditEntry` amounts equals `timeCredits`.
+  2. Total balances plus total held in open bookings equals the total ever granted.
+  3. No balance is below 0.
+- **Concurrency:** parallel book, complete and cancel requests must move credits exactly once.
+- **Client:** `npm run lint` and `npm run build` must pass. Pages were audited with axe-core.
 
-## 13. Deployment
+## 13. Known limitations
+
+| Limitation | Effect | Planned fix |
+|---|---|---|
+| No email | No verification, password reset or email alerts. Render's free tier blocks outbound SMTP (ports 25, 465, 587) | Transactional email over an HTTPS API (PRD FR22) |
+| Signup credits can be farmed | Many accounts × 2 credits | Google sign-in or verified email, plus admin review of credit flows (FR22, FR23) |
+| No admin screen for disputes | Admins resolve with `GET /api/admin/disputes` and `POST /api/admin/disputes/:id/resolve` | Admin page (FR21) |
+| JWT in `localStorage` | An XSS bug could read the token. No server-side revocation except a password change | HTTP-only cookie on a shared custom domain |
+| Single instance | Whiteboard strokes live in memory and are lost on restart. Sockets can't span instances | Socket.IO Redis adapter, strokes in Redis |
+| Free-tier cold start | First request after ~15 idle minutes takes 30 to 50 s | Uptime ping on `/health` or a paid instance |
+| STUN only by default | Peers behind symmetric NAT can't connect video | Configure `TURN_*` |
+| No member reporting or blocking | Abuse handled manually | FR24 |
+
+## 14. Deployment
 
 | Piece | Platform | Settings |
 |---|---|---|
-| Client | Vercel | Root `client`, framework Vite, build `npm run build`, output `dist`. `vercel.json` sends every route to `index.html` and adds cache and security headers. `VITE_SERVER_URL` is set in the dashboard. |
-| Server | Render (web service) | Root `server`, build `npm install`, start `npm start`, health check `/health`. Env vars from section 10. `render.yaml` describes the service. |
-| Database | MongoDB Atlas | Replica set cluster (any tier, including free M0), database `skillbarter`, network access for Render. |
+| Client | Vercel | Root `client`, Vite preset, output `dist`. `VITE_SERVER_URL` in the dashboard. `vercel.json` sends every route to `index.html` and adds headers |
+| API | Render web service | Blueprint `render.yaml`: root `server`, build `npm ci --omit=dev`, start `npm start`, health check `/health`, Node 22 |
+| Database | MongoDB Atlas | Any replica set (free M0 works). Network access `0.0.0.0/0` for Render's free tier |
 
-Notes:
-- The client calls the Render URL from `VITE_SERVER_URL` directly for REST, Socket.IO and PeerJS. The server only accepts that origin when it equals `CLIENT_URL`.
-- Render's free tier sleeps after inactivity. The first request after sleep takes ~30–50 seconds; the auto-release job catches up on wake.
-- Step-by-step instructions are in [DEPLOYMENT.md](./DEPLOYMENT.md).
+The step-by-step guide is in [DEPLOYMENT.md](./DEPLOYMENT.md).

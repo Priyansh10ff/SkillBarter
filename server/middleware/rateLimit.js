@@ -4,7 +4,7 @@ const env = require("../config/env");
 const skip = () => env.NODE_ENV === "test";
 const common = { windowMs: 15 * 60 * 1000, standardHeaders: "draft-8", legacyHeaders: false, skip };
 
-// Login, register and email-token routes
+// Login, register and password change
 const authLimiter = rateLimit({
   ...common,
   limit: 20,

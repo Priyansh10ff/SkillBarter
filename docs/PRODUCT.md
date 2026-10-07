@@ -2,6 +2,8 @@
 
 Trade what you know for what you want to learn. One hour of teaching earns one hour of learning. No money changes hands.
 
+Live at [skillbarter-web.vercel.app](https://skillbarter-web.vercel.app) · Requirements in [PRD.md](./PRD.md) · Implementation in [TECHNICAL.md](./TECHNICAL.md)
+
 ---
 
 ## What it is
@@ -10,7 +12,7 @@ Skill Barter is a peer-to-peer skill exchange built on time credits. You post a 
 
 Every new member starts with 2 credits so they can learn before they have taught anything.
 
-## Why we are building it
+## Why it exists
 
 - **Learning outside a curriculum costs money most students do not have.** Courses, tutors and bootcamps are priced for people with income. Students and early-career people have time and skills, not cash.
 - **Most people already know something worth teaching.** A second-year student who is good at React is a beginner at guitar. Someone fluent in Japanese wants to learn Figma. Those two people can help each other, but there is no simple way for them to find each other and trade fairly.
@@ -34,8 +36,8 @@ Professional tutoring businesses, paid coaching, or anyone looking to earn money
 
 ## How it works
 
-1. **Sign up.** You get 2 starting credits.
-2. **Fill in your profile.** Skills you can teach, skills you want to learn, the hours you are usually free.
+1. **Sign up.** You're logged in straight away with 2 starting credits.
+2. **Set up your profile** in three short steps: skills you can teach, skills you want to learn, the hours you are usually free.
 3. **Post a listing** for something you can teach, with a length of 30, 60, 90 or 120 minutes. Cost is 1 credit per hour (30 minutes = 0.5 credits).
 4. **Find something to learn.** Browse and search listings, or check the suggestions built from the skills you want and the skills other people want from you.
 5. **Book a session.** The credits are taken from your balance and held, not paid out yet.
@@ -49,7 +51,8 @@ If a booking is declined or cancelled before the session, the held credits go ba
 ## Core features
 
 **Accounts and trust**
-- Email and password sign up with disposable email blocking
+- Email and password sign up that logs you straight in, with disposable email blocking
+- Three-step onboarding: teach, learn, availability
 - Password change from settings (logs out other sessions)
 - Public profiles with bio, skills offered and wanted, availability, rating, reviews, badges and session stats
 
@@ -79,6 +82,7 @@ If a booking is declined or cancelled before the session, the held credits go ba
 
 **Notifications**
 - Real-time in-app notifications with a bell and history
+- Live balance and booking updates without refreshing
 
 ## Principles
 
@@ -95,6 +99,7 @@ If a booking is declined or cancelled before the session, the held credits go ba
 - Recording sessions
 - Native mobile apps (the web app is responsive and works on mobile browsers)
 - Calendar sync with Google or Outlook
+- Email (verification, password reset, reminders). Planned for v1.1 through an HTTPS email provider
 
 ## Tech at a glance
 
@@ -107,4 +112,4 @@ If a booking is declined or cancelled before the session, the held credits go ba
 | Auth | JWT, bcrypt password hashing |
 | Hosting | Vercel (client), Render (server), MongoDB Atlas (database) |
 
-Full technical details are in [TECHNICAL.md](./TECHNICAL.md).
+Requirements and the roadmap are in [PRD.md](./PRD.md). Technical details are in [TECHNICAL.md](./TECHNICAL.md).
