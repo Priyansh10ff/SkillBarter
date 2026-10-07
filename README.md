@@ -21,9 +21,7 @@ No money, no subscriptions. Every session runs in the app: video, screen share, 
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-4-1E1E1B?logo=socketdotio&logoColor=FFB020)
 ![WebRTC](https://img.shields.io/badge/Video-WebRTC%20%2B%20PeerJS-1E1E1B?logo=webrtc&logoColor=FFB020)
 
-<!-- Screenshots: save them to docs/screenshots/ and uncomment.
-<img src="docs/screenshots/home.png" alt="Skill Barter landing page: the open sessions board, live community numbers and how it works" width="900">
--->
+<img src="docs/screenshots/home.png" alt="Skill Barter landing page: headline, live open-sessions board with costs in hours, community numbers and how it works" width="900">
 
 </div>
 
@@ -51,6 +49,27 @@ The hard part is keeping the credits honest. Every movement is an entry in an ap
 | **Community** | 1 to 5 star reviews from both sides, milestone badges, and a leaderboard by sessions taught or by rating. |
 | **Real-time** | Live notifications, balance updates and booking changes over Socket.IO. |
 | **Design** | A dark, terminal-inspired interface. Amber is used for credits and time and nothing else. Meets WCAG AA contrast, has visible focus, respects reduced motion. |
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/browse.png" alt="Browse page with barter matches and sessions suggested from the skills you want to learn"><br><sub><b>Browse</b>: barter matches and suggested sessions</sub></td>
+    <td width="50%"><img src="docs/screenshots/listing.png" alt="Session detail with cost in hours, book button and teacher card showing their timezone"><br><sub><b>Session</b>: cost, teacher and their local time</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/bookings.png" alt="Bookings page with a progress track per booking, held credits and a time proposal to accept"><br><sub><b>Bookings</b>: booked → time set → session → paid out</sub></td>
+    <td><img src="docs/screenshots/wallet.png" alt="Wallet with available and held hours, a balance chart and the ledger statement"><br><sub><b>Wallet</b>: balance, held credits and the full ledger</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/profile.png" alt="Public profile with sessions taught and attended, rating, skills, availability, badges and reviews"><br><sub><b>Profile</b>: stats, skills, badges and reviews</sub></td>
+    <td><img src="docs/screenshots/leaderboard.png" alt="Leaderboard ranking members by sessions taught with badges and ratings"><br><sub><b>Leaderboard</b>: most taught or top rated</sub></td>
+  </tr>
+</table>
+
+<p align="center"><img src="docs/screenshots/mobile.png" alt="Landing page on a phone" width="260"><br><sub>On a phone</sub></p>
+
+<sub>Screenshots use demo data.</sub>
 
 ## How a session works
 

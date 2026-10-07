@@ -88,7 +88,8 @@ SkillBarter/
 │   ├── PRD.md                     Goals, user stories, requirements, roadmap, risks
 │   ├── TECHNICAL.md               This file
 │   ├── DESIGN.md                  Design system
-│   └── DEPLOYMENT.md              Atlas → Render → Vercel
+│   ├── DEPLOYMENT.md              Atlas → Render → Vercel
+│   └── screenshots/               README images
 │
 ├── client/
 │   ├── index.html
