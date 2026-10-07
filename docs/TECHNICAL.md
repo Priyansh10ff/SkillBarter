@@ -12,7 +12,7 @@ How the system is built: architecture, stack, folder structure, data model, cred
                          │  Vercel: static build + CDN  │
                          └──────┬─────────┬─────────┬───┘
                  HTTPS /api/*   │         │ WSS     │ WebRTC media (peer to peer)
-        (Vercel rewrite → API)  │         │         │  ┌─────────────────────────┐
+        (direct to the API)     │         │         │  ┌─────────────────────────┐
                                 ▼         ▼         └─►│  Other participant's     │
                          ┌──────────────────────────┐  │  browser                 │
                          │  Node.js server (Render)  │  └─────────────────────────┘
@@ -94,7 +94,7 @@ SkillBarter/
 │   ├── tailwind.config.js
 │   ├── postcss.config.js
 │   ├── eslint.config.js
-│   ├── vercel.json               SPA fallback + /api rewrite to Render
+│   ├── vercel.json               SPA fallback + cache and security headers
 │   ├── .env.development          Local URLs (no secrets)
 │   ├── .env.production           Production URLs (no secrets)
 │   ├── .env.example
@@ -475,8 +475,7 @@ Whiteboard events from a socket that hasn't joined that room are ignored. In-roo
 ### `client/.env`
 | Key | Example | Purpose |
 |---|---|---|
-| `VITE_API_URL` | empty in dev, `/api` via Vercel rewrite in prod | Axios base URL |
-| `VITE_SOCKET_URL` | `http://localhost:5000` / `https://<render-app>.onrender.com` | Socket.IO and PeerServer host |
+| `VITE_SERVER_URL` | `http://localhost:5000` / `https://<render-app>.onrender.com` | The API server, for REST, Socket.IO and PeerServer. In development REST goes through the Vite proxy; in production the client calls it directly. Set in the Vercel dashboard |
 
 ## 11. Local development
 
@@ -526,12 +525,12 @@ To test a session room locally, log in as the learner and the teacher in two dif
 
 | Piece | Platform | Settings |
 |---|---|---|
-| Client | Vercel | Root `client`, framework Vite, build `npm run build`, output `dist`. `vercel.json` rewrites `/api/*` to the Render server and everything else to `index.html`. |
+| Client | Vercel | Root `client`, framework Vite, build `npm run build`, output `dist`. `vercel.json` sends every route to `index.html` and adds cache and security headers. `VITE_SERVER_URL` is set in the dashboard. |
 | Server | Render (web service) | Root `server`, build `npm install`, start `npm start`, health check `/health`. Env vars from section 10. `render.yaml` describes the service. |
 | Database | MongoDB Atlas | Replica set cluster (any tier, including free M0), database `skillbarter`, network access for Render. |
 | Email | Gmail SMTP | Account with 2FA and an app password. |
 
 Notes:
-- REST calls go through the Vercel rewrite (same origin). Socket.IO and PeerJS connect straight to the Render URL from `VITE_SOCKET_URL`, which must be in the server's CORS allow-list via `CLIENT_URL`.
+- The client calls the Render URL from `VITE_SERVER_URL` directly for REST, Socket.IO and PeerJS. The server only accepts that origin when it equals `CLIENT_URL`.
 - Render's free tier sleeps after inactivity. The first request after sleep takes ~30–50 seconds; the auto-release job catches up on wake.
 - Step-by-step instructions are in [DEPLOYMENT.md](./DEPLOYMENT.md).

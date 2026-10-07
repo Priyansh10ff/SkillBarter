@@ -14,8 +14,8 @@ services:
         value: production
       - key: NODE_VERSION
         value: "22"
-      - key: CLIENT_URL
-        value: https://skill-barter-sigma.vercel.app
+      - key: CLIENT_URL # your Vercel URL, exactly, no trailing slash
+        sync: false
       - key: MONGO_URI
         sync: false
       - key: JWT_SECRET

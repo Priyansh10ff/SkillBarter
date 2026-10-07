@@ -4,12 +4,19 @@ Three pieces: the **client** on Vercel, the **API** on Render, the **database** 
 
 ```
 browser ──► Vercel (static client)
-   │          └── /api/* rewritten to Render (same origin, no CORS for REST)
-   └──────► Render (API + Socket.IO + PeerServer, one port)  ──► MongoDB Atlas
-              wss://…/socket.io   wss://…/peerjs
+   │
+   └──────► Render (REST + Socket.IO + PeerServer, one port)  ──► MongoDB Atlas
+              https://…/api   wss://…/socket.io   wss://…/peerjs
 ```
 
-Socket.IO and PeerJS connect straight to the Render URL (`VITE_SOCKET_URL`), so `CLIENT_URL` on Render must be the exact Vercel URL or the browser will be refused.
+Two settings point the halves at each other, and nothing in the code needs editing:
+
+| Where | Setting | Value |
+|---|---|---|
+| Vercel | `VITE_SERVER_URL` | the Render URL |
+| Render | `CLIENT_URL` | the Vercel URL (CORS: anything else is refused) |
+
+Because each needs the other's URL, deploy in this order: Atlas → Render → Vercel → back to Render to set `CLIENT_URL`.
 
 ---
 
@@ -31,38 +38,42 @@ Production refuses to start without these, because sign-up depends on the verifi
 
 ## 3. API: Render
 
-1. New → **Blueprint**, pick the GitHub repo. Render reads `render.yaml` (root dir `server`, `npm ci --omit=dev`, `npm start`, health check `/health`).
-2. Fill in the secrets it asks for:
+1. Render → **New → Blueprint** → pick the GitHub repo. It reads `render.yaml`: root dir `server`, build `npm ci --omit=dev`, start `npm start`, health check `/health`, Node 22.
+2. Fill in what it asks for:
 
    | Key | Value |
    |---|---|
    | `MONGO_URI` | Atlas connection string |
    | `EMAIL_USER` / `EMAIL_PASS` | Gmail address + app password |
-   | `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` | optional, see below |
+   | `CLIENT_URL` | `http://localhost:5173` for now; you'll replace it in step 5 |
+   | `TURN_*` | leave empty unless you have a TURN provider (see below) |
 
-   `JWT_SECRET` is generated automatically. `PORT` is set by Render.
-3. If your Vercel URL differs from `https://skill-barter-sigma.vercel.app`, change `CLIENT_URL`.
-4. Deploy, then open `https://<service>.onrender.com/health`. Expect `{"status":"ok","db":"connected"}`.
+   `JWT_SECRET` is generated for you. `PORT` is set by Render.
+3. Deploy. Copy the service URL, e.g. `https://skill-barter-server-abcd.onrender.com`.
+4. Open `<that URL>/health`. Expect `{"status":"ok","db":"connected"}`.
 
-Render's free tier sleeps after ~15 idle minutes; the first request after that takes 30–50 s. Bookings whose release time passed while asleep are completed as soon as it wakes.
+Render's free tier sleeps after ~15 idle minutes; the first request after that takes 30–50 s. Bookings whose release time passed while it slept are completed as soon as it wakes.
 
-**TURN (optional).** Video works peer to peer with public STUN for most networks. Users behind strict corporate or university networks may need a TURN relay. Any provider works (Metered, Twilio, or your own coturn); put its URL and credentials in the three `TURN_*` variables.
+**TURN (optional).** Video works peer to peer with public STUN on most networks. Strict corporate or campus networks may need a TURN relay (Metered, Twilio, or your own coturn); put its URL and credentials in the three `TURN_*` variables.
 
 ## 4. Client: Vercel
 
-1. Import the repo. **Root directory** `client`, framework preset **Vite** (build `npm run build`, output `dist`).
-2. Environment variables (Production):
+1. Vercel → **Add New → Project** → import the repo.
+2. **Root Directory**: `client`. Framework preset **Vite** (build `npm run build`, output `dist`).
+3. **Environment Variables**: `VITE_SERVER_URL` = the Render URL from step 3.3 (no trailing slash).
+4. Deploy. Copy the production URL, e.g. `https://skill-barter.vercel.app`.
 
-   | Key | Value |
-   |---|---|
-   | `VITE_SOCKET_URL` | `https://<service>.onrender.com` |
-   | `VITE_API_URL` | leave empty |
+`VITE_SERVER_URL` is baked in at build time: if you change it later, redeploy.
 
-   These are also committed in `client/.env.production`; dashboard values win.
-3. If the Render URL isn't `skillbarter-yew1.onrender.com`, update the `/api` rewrite in `client/vercel.json`.
-4. Deploy.
+## 5. Connect them
 
-## 5. After the first deploy
+1. Render → your service → **Environment** → set `CLIENT_URL` to the Vercel URL, exactly (`https://…`, no trailing slash).
+2. Save. Render redeploys on its own.
+3. Open the Vercel URL. The landing page should load with "Open sessions" (empty until someone posts). If the browser console shows CORS errors, `CLIENT_URL` doesn't match the address in the browser bar.
+
+If you add a custom domain later, put that domain in `CLIENT_URL` instead.
+
+## 6. After the first deploy
 
 1. Sign up with your own email, verify, finish onboarding.
 2. Make yourself an admin so you can resolve reported problems. With `MONGO_URI` pointing at production in `server/.env`:
@@ -81,7 +92,7 @@ Render's free tier sleeps after ~15 idle minutes; the first request after that t
 
 `npm run seed` and `npm run reset` refuse to run with `NODE_ENV=production`.
 
-## 6. Rolling back
+## 7. Rolling back
 
 - **Client**: Vercel → Deployments → previous deployment → *Promote*.
 - **API**: Render → Deploys → previous deploy → *Rollback*, or revert the commit.
